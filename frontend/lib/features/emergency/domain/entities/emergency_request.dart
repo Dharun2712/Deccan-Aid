@@ -1,24 +1,26 @@
 import 'package:flutter/foundation.dart';
 import 'emergency_location.dart';
+import '../enums/emergency_status.dart';
+import '../enums/emergency_severity.dart';
 
 @immutable
 class EmergencyRequest {
   final String id;
   final String userId;
-  final String status;
-  final String severity;
+  final EmergencyStatus status;
+  final EmergencySeverity severity;
   final EmergencyLocation location;
-  final String description;
+  final String? description;
   final DateTime createdAt;
   final DateTime updatedAt;
 
   const EmergencyRequest({
     required this.id,
     required this.userId,
-    required this.status,
+    this.status = EmergencyStatus.created,
     required this.severity,
     required this.location,
-    required this.description,
+    this.description,
     required this.createdAt,
     required this.updatedAt,
   });
@@ -26,8 +28,8 @@ class EmergencyRequest {
   EmergencyRequest copyWith({
     String? id,
     String? userId,
-    String? status,
-    String? severity,
+    EmergencyStatus? status,
+    EmergencySeverity? severity,
     EmergencyLocation? location,
     String? description,
     DateTime? createdAt,

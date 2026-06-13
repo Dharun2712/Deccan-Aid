@@ -4,12 +4,12 @@ import 'package:flutter/foundation.dart';
 class EmergencyLocation {
   final double latitude;
   final double longitude;
-  final String address;
+  final String? address;
 
   const EmergencyLocation({
     required this.latitude,
     required this.longitude,
-    required this.address,
+    this.address,
   });
 
   EmergencyLocation copyWith({
@@ -34,7 +34,5 @@ class EmergencyLocation {
   }
 
   @override
-  int get hashCode {
-    return latitude.hashCode ^ longitude.hashCode ^ address.hashCode;
-  }
+  int get hashCode => latitude.hashCode ^ longitude.hashCode ^ address.hashCode;
 }
