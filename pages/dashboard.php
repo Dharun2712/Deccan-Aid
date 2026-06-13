@@ -1,7 +1,7 @@
 <?php
 /**
  * Dashboard Page - Smart Ambulance Admin
- * Chennai Region - Near Saveetha University
+ * Namakkal Region - Near Namakkal Town Center
  */
 require_once __DIR__ . '/../config.php';
 
@@ -44,7 +44,7 @@ $hospitalList = $hospitals['hospitals'] ?? $hospitals['data'] ?? [];
         <svg class="w-4 h-4 inline-block mr-1 text-red-400" fill="currentColor" viewBox="0 0 20 20">
           <path fill-rule="evenodd" d="M5.05 4.05a7 7 0 119.9 9.9L10 18.9l-4.95-4.95a7 7 0 010-9.9zM10 11a2 2 0 100-4 2 2 0 000 4z" clip-rule="evenodd"/>
         </svg>
-        Chennai District • Near Saveetha University
+        Namakkal District • Near Namakkal Town Center
       </p>
     </div>
     <div class="flex items-center gap-3">
@@ -68,7 +68,7 @@ $hospitalList = $hospitals['hospitals'] ?? $hospitals['data'] ?? [];
     </div>
     <div class="flex-1">
       <h4 class="text-red-400 font-semibold"><?= $criticalRequests ?> Critical Emergency Alert<?= $criticalRequests > 1 ? 's' : '' ?>!</h4>
-      <p class="text-red-300/70 text-sm">Immediate attention required in Chennai region</p>
+      <p class="text-red-300/70 text-sm">Immediate attention required in Namakkal region</p>
     </div>
     <a href="?page=requests" class="btn-primary bg-red-500 hover:bg-red-600">View Now</a>
   </div>
@@ -163,7 +163,7 @@ $hospitalList = $hospitals['hospitals'] ?? $hospitals['data'] ?? [];
           <p class="text-3xl font-bold text-white mt-2"><?= number_format($totalUsers) ?></p>
           <p class="text-xs text-purple-400 mt-2 flex items-center gap-1">
             <svg class="w-3 h-3" fill="currentColor" viewBox="0 0 20 20"><path d="M13 6a3 3 0 11-6 0 3 3 0 016 0zM18 8a2 2 0 11-4 0 2 2 0 014 0zM14 15a4 4 0 00-8 0v3h8v-3zM6 8a2 2 0 11-4 0 2 2 0 014 0zM16 18v-3a5.972 5.972 0 00-.75-2.906A3.005 3.005 0 0119 15v3h-3zM4.75 12.094A5.973 5.973 0 004 15v3H1v-3a3 3 0 013.75-2.906z"/></svg>
-            Chennai Region
+            Namakkal Region
           </p>
         </div>
         <div class="p-3 bg-gradient-to-br from-purple-500/20 to-pink-500/20 rounded-xl">
@@ -239,7 +239,7 @@ $hospitalList = $hospitals['hospitals'] ?? $hospitals['data'] ?? [];
       <div class="flex items-center justify-between mb-6">
         <div>
           <h3 class="text-lg font-semibold text-white">Request Trends</h3>
-          <p class="text-sm text-slate-400">Weekly overview - Chennai Region</p>
+          <p class="text-sm text-slate-400">Weekly overview - Namakkal Region</p>
         </div>
         <div class="flex gap-2">
           <button class="px-3 py-1.5 text-xs font-medium bg-indigo-500/20 text-indigo-400 rounded-lg">Week</button>
@@ -272,7 +272,7 @@ $hospitalList = $hospitals['hospitals'] ?? $hospitals['data'] ?? [];
       <div class="flex items-center justify-between p-4 border-b border-slate-700/50">
         <div>
           <h3 class="text-lg font-semibold text-white">Live Ambulance Tracking</h3>
-          <p class="text-sm text-slate-400">Interactive map - Chennai District</p>
+          <p class="text-sm text-slate-400">Interactive map - Namakkal District</p>
         </div>
         <div class="flex items-center gap-3">
           <span class="flex items-center gap-2 px-3 py-1.5 bg-emerald-500/20 text-emerald-400 rounded-lg text-xs font-medium">
@@ -301,7 +301,7 @@ $hospitalList = $hospitals['hospitals'] ?? $hospitals['data'] ?? [];
             Hospitals
           </div>
         </div>
-        <span class="text-slate-500">Centered: Saveetha University, Chennai</span>
+        <span class="text-slate-500">Centered: Namakkal Town Center</span>
       </div>
     </div>
 
@@ -323,7 +323,7 @@ $hospitalList = $hospitals['hospitals'] ?? $hospitals['data'] ?? [];
           </div>
           <div class="flex-1 min-w-0">
             <p class="text-white text-sm font-medium truncate"><?= htmlspecialchars($driver['name']) ?></p>
-            <p class="text-slate-400 text-xs truncate"><?= htmlspecialchars($driver['area'] ?? 'Chennai') ?></p>
+            <p class="text-slate-400 text-xs truncate"><?= htmlspecialchars($driver['area'] ?? 'Namakkal') ?></p>
           </div>
           <span class="status-badge <?= $driver['status'] ?> text-xs">
             <?= ucfirst($driver['status']) ?>
@@ -341,7 +341,7 @@ $hospitalList = $hospitals['hospitals'] ?? $hospitals['data'] ?? [];
       <div class="flex items-center justify-between mb-6">
         <div>
           <h3 class="text-lg font-semibold text-white">Active Requests</h3>
-          <p class="text-sm text-slate-400">Real-time SOS monitoring - Chennai Region</p>
+          <p class="text-sm text-slate-400">Real-time SOS monitoring - Namakkal Region</p>
         </div>
         <a href="?page=requests" class="text-sm text-indigo-400 hover:text-indigo-300 flex items-center gap-1">
           View All
@@ -385,7 +385,7 @@ $hospitalList = $hospitals['hospitals'] ?? $hospitals['data'] ?? [];
                   <span class="text-white text-sm"><?= htmlspecialchars($request['user_name'] ?? 'Unknown') ?></span>
                 </div>
               </td>
-              <td class="text-slate-400 text-xs max-w-32 truncate"><?= htmlspecialchars($request['location']['name'] ?? $request['pickup_location'] ?? 'Chennai') ?></td>
+              <td class="text-slate-400 text-xs max-w-32 truncate"><?= htmlspecialchars($request['location']['name'] ?? $request['pickup_location'] ?? 'Namakkal') ?></td>
               <td>
                 <span class="status-badge <?= strtolower($request['severity'] ?? 'medium') ?>">
                   <?= ucfirst($request['severity'] ?? 'Medium') ?>
@@ -493,7 +493,7 @@ $hospitalList = $hospitals['hospitals'] ?? $hospitals['data'] ?? [];
       <div class="flex items-center justify-between mb-6">
         <div>
           <h3 class="text-lg font-semibold text-white">Nearby Hospitals</h3>
-          <p class="text-sm text-slate-400">Chennai Region Network</p>
+          <p class="text-sm text-slate-400">Namakkal Region Network</p>
         </div>
         <a href="?page=hospitals" class="text-sm text-indigo-400 hover:text-indigo-300">View All</a>
       </div>
@@ -567,7 +567,7 @@ $hospitalList = $hospitals['hospitals'] ?? $hospitals['data'] ?? [];
     <div class="flex items-center justify-between mb-6">
       <div>
         <h3 class="text-lg font-semibold text-white">Recent Activity</h3>
-        <p class="text-sm text-slate-400">Latest system events - Chennai Region</p>
+        <p class="text-sm text-slate-400">Latest system events - Namakkal Region</p>
       </div>
     </div>
     
@@ -580,7 +580,7 @@ $hospitalList = $hospitals['hospitals'] ?? $hospitals['data'] ?? [];
         </div>
         <div class="flex-1 min-w-0">
           <p class="text-white text-sm font-medium">Request Completed</p>
-          <p class="text-slate-400 text-xs truncate">Dharun Prasad delivered to Saveetha Hospital</p>
+          <p class="text-slate-400 text-xs truncate">Dharun Prasad delivered to Government Medical College Hospital, Namakkal</p>
           <p class="text-slate-500 text-xs mt-1">2 min ago</p>
         </div>
       </div>
@@ -592,7 +592,7 @@ $hospitalList = $hospitals['hospitals'] ?? $hospitals['data'] ?? [];
         </div>
         <div class="flex-1 min-w-0">
           <p class="text-white text-sm font-medium">Driver Dispatched</p>
-          <p class="text-slate-400 text-xs truncate">Aswanth Vijay en route to Perundurai</p>
+          <p class="text-slate-400 text-xs truncate">Aswanth Vijay en route to Tiruchengode</p>
           <p class="text-slate-500 text-xs mt-1">5 min ago</p>
         </div>
       </div>
@@ -604,7 +604,7 @@ $hospitalList = $hospitals['hospitals'] ?? $hospitals['data'] ?? [];
         </div>
         <div class="flex-1 min-w-0">
           <p class="text-white text-sm font-medium">Critical Alert</p>
-          <p class="text-slate-400 text-xs truncate">Emergency near KEC Main Gate</p>
+          <p class="text-slate-400 text-xs truncate">Emergency near Namakkal Bus Stand</p>
           <p class="text-slate-500 text-xs mt-1">8 min ago</p>
         </div>
       </div>
@@ -703,9 +703,9 @@ function initDashboardMap() {
   const mapContainer = document.getElementById('dashboardMap');
   if (!mapContainer) return;
 
-  // Center coordinates: Saveetha University, Chennai
-  const centerLat = 13.0674;
-  const centerLng = 80.1452;
+  // Center coordinates: Namakkal Town Center
+  const centerLat = 11.2194;
+  const centerLng = 78.1678;
 
   // Create map
   const dashMap = L.map('dashboardMap', {
@@ -738,9 +738,9 @@ function initDashboardMap() {
   ];
 
   const hospitals = [
-    { lat: centerLat + 0.025, lng: centerLng + 0.015, name: 'Rajiv Gandhi Govt Hospital', beds: 25 },
-    { lat: centerLat - 0.015, lng: centerLng - 0.025, name: 'Saveetha Medical College', beds: 18 },
-    { lat: centerLat - 0.028, lng: centerLng + 0.022, name: 'Apollo Hospitals Chennai', beds: 32 },
+    { lat: centerLat + 0.025, lng: centerLng + 0.015, name: 'Maruthi Hospital', beds: 25 },
+    { lat: centerLat - 0.015, lng: centerLng - 0.025, name: 'M.M. Hospital', beds: 18 },
+    { lat: centerLat - 0.028, lng: centerLng + 0.022, name: 'CM Speciality Hospital (CM Best)', beds: 32 },
   ];
 
   // Custom marker styles
@@ -799,7 +799,7 @@ function initDashboardMap() {
       .bindPopup(`<div style="color:#34d399;font-weight:600;">🏥 ${h.name}</div><div style="color:#94a3b8;font-size:11px;">Beds: ${h.beds} available</div>`);
   });
 
-  // Add KEC center marker
+  // Add Namakkal center marker
   const kecIcon = L.divIcon({
     className: 'custom-marker',
     html: `<div style="
@@ -812,13 +812,13 @@ function initDashboardMap() {
       justify-content: center;
       font-size: 16px;
       box-shadow: 0 0 20px rgba(99,102,241,0.6);
-    ">🎓</div>`,
+    ">📍</div>`,
     iconSize: [36, 36],
     iconAnchor: [18, 18]
   });
   L.marker([centerLat, centerLng], { icon: kecIcon })
     .addTo(dashMap)
-    .bindPopup('<div style="color:#a5b4fc;font-weight:600;">📍 Saveetha University, Chennai</div><div style="color:#94a3b8;font-size:11px;">13.0674° N, 80.1452° E</div>');
+    .bindPopup('<div style="color:#a5b4fc;font-weight:600;">📍 Namakkal Town Center</div><div style="color:#94a3b8;font-size:11px;">11.2194° N, 78.1678° E</div>');
 
   // Add coverage circle
   L.circle([centerLat, centerLng], {

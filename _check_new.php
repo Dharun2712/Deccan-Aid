@@ -1,6 +1,11 @@
 <?php
 require __DIR__ . '/vendor/autoload.php';
-$client = new MongoDB\Client('mongodb+srv://Dharun:Dharun2712@cluster0.yr5quzl.mongodb.net/?retryWrites=true&w=majority&appName=Cluster0');
+$mongoUri = getenv('MONGODB_URI') ?: '';
+if ($mongoUri === '') {
+    die("MONGODB_URI is not set in environment\n");
+}
+
+$client = new MongoDB\Client($mongoUri);
 $db = $client->selectDatabase('smart_ambulance');
 
 echo "=== ambulance_drivers (all docs) ===\n";

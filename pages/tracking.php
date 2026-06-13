@@ -1,7 +1,7 @@
 <?php
 /**
  * Live Tracking Page - Interactive Map with Leaflet.js
- * Chennai Region - Near Saveetha University
+ * Namakkal Region - Near Namakkal Town Center
  * Shows: Accidents, Ambulances, Hospitals
  */
 require_once __DIR__ . '/../config.php';
@@ -21,8 +21,8 @@ $mapDrivers = array_map(function($d, $index) {
         'vehicle' => $d['vehicle_number'] ?? '',
         'phone' => $d['phone'] ?? '',
         'status' => $d['status'] ?? 'offline',
-        'lat' => $d['current_location']['lat'] ?? (13.0674 + (rand(-50, 50) / 1000)),
-        'lng' => $d['current_location']['lng'] ?? (80.1452 + (rand(-50, 50) / 1000)),
+        'lat' => $d['current_location']['lat'] ?? (11.2194 + (rand(-50, 50) / 1000)),
+        'lng' => $d['current_location']['lng'] ?? (78.1678 + (rand(-50, 50) / 1000)),
     ];
 }, $drivers, array_keys($drivers));
 
@@ -33,8 +33,8 @@ $mapHospitals = array_map(function($h, $index) {
         'type' => $h['type'] ?? 'General',
         'address' => $h['address'] ?? '',
         'phone' => $h['phone'] ?? '',
-        'lat' => $h['location']['lat'] ?? (13.0674 + (rand(-40, 40) / 1000)),
-        'lng' => $h['location']['lng'] ?? (80.1452 + (rand(-40, 40) / 1000)),
+        'lat' => $h['location']['lat'] ?? (11.2194 + (rand(-40, 40) / 1000)),
+        'lng' => $h['location']['lng'] ?? (78.1678 + (rand(-40, 40) / 1000)),
         'beds_available' => $h['beds_available'] ?? rand(5, 30),
     ];
 }, $hospitals, array_keys($hospitals));
@@ -47,9 +47,9 @@ $mapAccidents = array_map(function($a, $index) {
         'severity' => $a['severity'] ?? 'medium',
         'status' => $a['status'] ?? 'pending',
         'phone' => $a['user_phone'] ?? '',
-        'lat' => $a['location']['lat'] ?? (13.0674 + (rand(-30, 30) / 1000)),
-        'lng' => $a['location']['lng'] ?? (80.1452 + (rand(-30, 30) / 1000)),
-        'location_name' => $a['location']['name'] ?? ($a['pickup_location'] ?? 'Chennai'),
+        'lat' => $a['location']['lat'] ?? (11.2194 + (rand(-30, 30) / 1000)),
+        'lng' => $a['location']['lng'] ?? (78.1678 + (rand(-30, 30) / 1000)),
+        'location_name' => $a['location']['name'] ?? ($a['pickup_location'] ?? 'Namakkal'),
         'created_at' => $a['created_at'] ?? date('Y-m-d H:i:s'),
     ];
 }, $accidents, array_keys($accidents));
@@ -64,7 +64,7 @@ $mapAccidents = array_map(function($a, $index) {
         <svg class="w-4 h-4 inline-block mr-1 text-red-400" fill="currentColor" viewBox="0 0 20 20">
           <path fill-rule="evenodd" d="M5.05 4.05a7 7 0 119.9 9.9L10 18.9l-4.95-4.95a7 7 0 010-9.9zM10 11a2 2 0 100-4 2 2 0 000 4z" clip-rule="evenodd"/>
         </svg>
-        Interactive Map - Chennai District • Saveetha University Area
+        Interactive Map - Namakkal District • Town Center Area
       </p>
     </div>
     <div class="flex items-center gap-3">
@@ -380,7 +380,7 @@ const mapData = {
   drivers: <?= json_encode(array_values($mapDrivers)) ?>,
   hospitals: <?= json_encode(array_values($mapHospitals)) ?>,
   accidents: <?= json_encode(array_values($mapAccidents)) ?>,
-  center: { lat: 13.0674, lng: 80.1452 } // Saveetha University, Chennai
+  center: { lat: 11.2194, lng: 78.1678 } // Namakkal Town Center
 };
 
 // Marker storage for focus functionality
@@ -398,7 +398,7 @@ document.addEventListener('DOMContentLoaded', function() {
 });
 
 function initMap() {
-  // Create map centered on Saveetha University, Chennai
+  // Create map centered on Namakkal Town Center
   map = L.map('trackingMap', {
     center: [mapData.center.lat, mapData.center.lng],
     zoom: 13,
@@ -413,10 +413,10 @@ function initMap() {
     maxZoom: 19
   }).addTo(map);
 
-  // Add Saveetha University Center Marker
+  // Add Namakkal Town Center Marker
   const kecIcon = L.divIcon({
     className: 'custom-marker',
-    html: '<div class="kec-marker" style="width:40px;height:40px;">🎓</div>',
+    html: '<div class="kec-marker" style="width:40px;height:40px;">📍</div>',
     iconSize: [40, 40],
     iconAnchor: [20, 20],
     popupAnchor: [0, -20]
@@ -425,9 +425,9 @@ function initMap() {
   L.marker([mapData.center.lat, mapData.center.lng], { icon: kecIcon })
     .addTo(map)
     .bindPopup(`
-      <div class="popup-header" style="color:#a5b4fc;">📍 Saveetha University</div>
-      <div class="popup-row"><span class="popup-label">Location:</span><span class="popup-value">Thandalam, Chennai</span></div>
-      <div class="popup-row"><span class="popup-label">Coordinates:</span><span class="popup-value">13.0674° N, 80.1452° E</span></div>
+      <div class="popup-header" style="color:#a5b4fc;">📍 Namakkal Town Center</div>
+      <div class="popup-row"><span class="popup-label">Location:</span><span class="popup-value">Namakkal, Tamil Nadu</span></div>
+      <div class="popup-row"><span class="popup-label">Coordinates:</span><span class="popup-value">11.2194° N, 78.1678° E</span></div>
       <div class="popup-row"><span class="popup-label">Coverage:</span><span class="popup-value">15 km radius</span></div>
     `);
 
@@ -510,7 +510,7 @@ function initMap() {
     markers.hospital[hospital.id] = marker;
   });
 
-  // Add coverage circle around KEC
+  // Add coverage circle around Namakkal center
   L.circle([mapData.center.lat, mapData.center.lng], {
     color: '#6366f1',
     fillColor: '#6366f1',

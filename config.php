@@ -1,14 +1,16 @@
 <?php
 /**
  * Smart Ambulance System - Configuration
- * Chennai Region - Saveetha University
+ * Namakkal Region - Namakkal Town Center
  */
 
 // =====================================
 // MONGODB ATLAS CONFIGURATION
 // =====================================
-define('MONGODB_URI', 'mongodb+srv://Dharun:Dharun2712@cluster0.yr5quzl.mongodb.net/?retryWrites=true&w=majority&appName=Cluster0');
-define('MONGODB_DB', 'smart_ambulance');
+$mongoUri = getenv('MONGODB_URI') ?: '';
+$mongoDbName = getenv('MONGODB_DB') ?: 'smart_ambulance';
+define('MONGODB_URI', $mongoUri);
+define('MONGODB_DB', $mongoDbName);
 
 /**
  * Get a MongoDB Atlas database connection.
@@ -17,6 +19,7 @@ define('MONGODB_DB', 'smart_ambulance');
 function getMongoDb(): ?\MongoDB\Database {
     static $db = null;
     if ($db !== null) return $db;
+    if (MONGODB_URI === '') return null;
     try {
         $vendorAutoload = __DIR__ . '/vendor/autoload.php';
         if (!file_exists($vendorAutoload)) return null;
@@ -161,13 +164,13 @@ function getAlertsFromMongo(): array {
 define('API_BASE_URL', '');
 define('ADMIN_API_URL', '');
 
-// Chennai Region Coordinates - Saveetha University
-define('REGION_CENTER_LAT', 13.0674);
-define('REGION_CENTER_LNG', 80.1452);
-define('REGION_NAME', 'Chennai District');
+// Namakkal Region Coordinates - Namakkal Town Center
+define('REGION_CENTER_LAT', 11.2194);
+define('REGION_CENTER_LNG', 78.1678);
+define('REGION_NAME', 'Namakkal District');
 
 // =====================================
-// DUMMY DATA - CHENNAI REGION
+// DUMMY DATA - NAMAKKAL REGION
 // =====================================
 
 
@@ -305,130 +308,130 @@ function getDummyUsers() {
     return $users;
 }
 
-// Chennai Region Hospitals
+// Namakkal Region Hospitals
 function getDummyHospitals() {
     return [
         [
             '_id' => 'HOSP001',
-            'name' => 'Apollo Hospitals',
-            'type' => 'Multi-Specialty Hospital',
-            'phone' => '044-28290200',
-            'address' => 'Greams Road, Chennai - 600006',
+            'name' => 'Government Medical College Hospital, Namakkal',
+            'type' => 'Government Medical College Hospital',
+            'phone' => '04286-266999',
+            'address' => 'Trichy Main Road, Namakkal - 637001',
             'status' => 'available',
             'capacity' => ['total' => 200, 'occupied' => 142, 'icu' => 30],
             'specialties' => ['Emergency', 'Cardiology', 'Neurology', 'ICU', 'Surgery', 'Orthopedics'],
-            'location' => ['lat' => 13.0674, 'lng' => 80.1452],
-            'distance' => '0.26 km',
+            'location' => ['lat' => 11.2194, 'lng' => 78.1682],
+            'distance' => '0.8 km',
             'rating' => 4.8
         ],
         [
             '_id' => 'HOSP002',
-            'name' => 'Saveetha Medical College & Hospital',
+            'name' => 'Maruthi Hospital',
             'type' => 'Multi-Specialty Hospital',
-            'phone' => '044-26801006',
-            'address' => 'Thandalam, Chennai - 602105',
+            'phone' => 'Not listed',
+            'address' => 'Namakkal Bazaar, opposite CBCID Office, Salem Road, Swamy Nagar, Namakkal - 637001',
             'status' => 'available',
             'capacity' => ['total' => 60, 'occupied' => 38, 'icu' => 8],
             'specialties' => ['Emergency', 'Trauma Care', 'General Medicine', 'ICU'],
-            'location' => ['lat' => 13.0720, 'lng' => 80.1380],
-            'distance' => '0.26 km',
-            'rating' => 4.4
+            'location' => ['lat' => 11.2201, 'lng' => 78.1658],
+            'distance' => '0.9 km',
+            'rating' => 4.0
         ],
         [
             '_id' => 'HOSP003',
-            'name' => 'MIOT International Hospital',
+            'name' => 'M.M. Hospital',
             'type' => 'Private Hospital',
-            'phone' => '044-42002288',
-            'address' => "Peter's Road, Royapettah, Chennai - 600014",
+            'phone' => '096262 10000 / 082382 38233',
+            'address' => '6/288 Trichy Road, Andavar Nagar, Namakkal - 637001',
             'status' => 'available',
             'capacity' => ['total' => 120, 'occupied' => 78, 'icu' => 15],
             'specialties' => ['General Medicine', 'Gynecology', 'Maternity', 'Pediatrics', 'Surgery'],
-            'location' => ['lat' => 13.0580, 'lng' => 80.1530],
-            'distance' => '0.47 km',
-            'rating' => 4.5
+            'location' => ['lat' => 11.2098, 'lng' => 78.1762],
+            'distance' => '2.0 km',
+            'rating' => 4.7
         ],
         [
             '_id' => 'HOSP004',
-            'name' => 'Fortis Malar Hospital',
+            'name' => 'CM Speciality Hospital (CM Best)',
             'type' => 'Private Hospital',
-            'phone' => '044-42892222',
-            'address' => 'Gandhi Nagar, Adyar, Chennai - 600020',
+            'phone' => '094875 55800',
+            'address' => 'Mohanur-Namakkal Road, Gandhi Nagar, Namakkal - 637001',
             'status' => 'available',
             'capacity' => ['total' => 100, 'occupied' => 64, 'icu' => 12],
             'specialties' => ['General Medicine', 'Orthopedics', 'Surgery', 'Pediatrics'],
-            'location' => ['lat' => 13.0012, 'lng' => 80.2565],
-            'distance' => '0.47 km',
-            'rating' => 4.3
+            'location' => ['lat' => 11.2166, 'lng' => 78.1739],
+            'distance' => '1.5 km',
+            'rating' => 3.8
         ],
         [
             '_id' => 'HOSP005',
-            'name' => 'Sri Ramachandra Medical Centre',
-            'type' => 'Private Hospital',
-            'phone' => '044-24768027',
-            'address' => 'Porur, Chennai - 600116',
+            'name' => 'Government Headquarters Hospital (GH), Namakkal',
+            'type' => 'Government Hospital',
+            'phone' => 'Not listed',
+            'address' => 'District Headquarters, Namakkal Town - 637001',
             'status' => 'available',
             'capacity' => ['total' => 80, 'occupied' => 51, 'icu' => 10],
             'specialties' => ['General Medicine', 'ENT', 'Dermatology', 'Surgery'],
-            'location' => ['lat' => 13.0386, 'lng' => 80.1581],
-            'distance' => '0.78 km',
+            'location' => ['lat' => 11.2180, 'lng' => 78.1670],
+            'distance' => '0.7 km',
             'rating' => 4.2
         ],
         [
             '_id' => 'HOSP006',
-            'name' => 'Vijaya Health Centre',
+            'name' => 'J.K.K. Nataraja Hospital, Komarapalayam',
             'type' => 'Multi-Specialty Hospital',
-            'phone' => '044-24809999',
-            'address' => 'NSK Salai, Vadapalani, Chennai - 600026',
+            'phone' => '04288-260500',
+            'address' => 'NH-544, Komarapalayam - 638183',
             'status' => 'available',
             'capacity' => ['total' => 150, 'occupied' => 98, 'icu' => 20],
             'specialties' => ['Cardiology', 'Nephrology', 'Gastroenterology', 'Emergency', 'ICU', 'Dialysis'],
-            'location' => ['lat' => 13.0524, 'lng' => 80.2120],
-            'distance' => '1.44 km',
+            'location' => ['lat' => 11.4388, 'lng' => 77.6957],
+            'distance' => '34.7 km',
             'rating' => 4.6
         ],
         [
             '_id' => 'HOSP007',
-            'name' => 'Kauvery Hospital',
+            'name' => 'Nalam Multispeciality Hospital, Namakkal',
             'type' => 'Private Hospital',
-            'phone' => '044-40009000',
-            'address' => 'Radha Krishnan Salai, Mylapore, Chennai - 600004',
+            'phone' => '04286-221400',
+            'address' => 'Paramathi Road, Namakkal - 637002',
             'status' => 'available',
             'capacity' => ['total' => 90, 'occupied' => 58, 'icu' => 12],
             'specialties' => ['General Medicine', 'Gynecology', 'Maternity', 'Surgery', 'Pediatrics'],
-            'location' => ['lat' => 13.0358, 'lng' => 80.2687],
-            'distance' => '1.88 km',
+            'location' => ['lat' => 11.2112, 'lng' => 78.1796],
+            'distance' => '1.9 km',
             'rating' => 4.3
         ],
         [
             '_id' => 'HOSP008',
-            'name' => 'Rajiv Gandhi Govt General Hospital',
+            'name' => 'Sakthi Hospital, Senthamangalam',
             'type' => 'Government Hospital',
-            'phone' => '044-25305000',
-            'address' => 'Park Town, Chennai - 600003',
+            'phone' => '04286-250450',
+            'address' => 'Main Road, Senthamangalam - 637409',
             'status' => 'available',
             'capacity' => ['total' => 300, 'occupied' => 214, 'icu' => 40],
             'specialties' => ['Emergency', 'Trauma Care', 'General Medicine', 'Surgery', 'Oncology', 'Pediatrics', 'Orthopedics'],
-            'location' => ['lat' => 13.0802, 'lng' => 80.2790],
-            'distance' => '3.58 km',
+            'location' => ['lat' => 11.3015, 'lng' => 78.2271],
+            'distance' => '12.6 km',
             'rating' => 4.7
         ],
         [
             '_id' => 'HOSP009',
-            'name' => 'Stanley Medical College Hospital',
+            'name' => 'Sri Venkateswara Hospital, Velur',
             'type' => 'Government Hospital',
-            'phone' => '044-25281441',
-            'address' => 'Old Jail Road, Royapuram, Chennai - 600001',
+            'phone' => '04268-220890',
+            'address' => 'Velur Main Road, Namakkal - 638182',
             'status' => 'available',
             'capacity' => ['total' => 180, 'occupied' => 119, 'icu' => 20],
             'specialties' => ['Emergency', 'General Medicine', 'Maternity', 'Surgery', 'Pediatrics'],
-            'location' => ['lat' => 13.1116, 'lng' => 80.2914],
-            'distance' => '15.52 km',
+            'location' => ['lat' => 11.1088, 'lng' => 78.0018],
+            'distance' => '26.3 km',
             'rating' => 4.1
         ]
     ];
 }
 
-// Chennai Region Drivers/Ambulances
+// Namakkal Region Drivers/Ambulances
 function getDummyDrivers() {
     $drivers = [
         [
@@ -637,32 +640,54 @@ function getDummyDrivers() {
         ]
     ];
     
+    $namakkalZones = [
+        ['area' => 'Namakkal Bus Stand', 'lat' => 11.2194, 'lng' => 78.1678],
+        ['area' => 'Mohanur Road, Namakkal', 'lat' => 11.2147, 'lng' => 78.1734],
+        ['area' => 'Paramathi Road, Namakkal', 'lat' => 11.2108, 'lng' => 78.1810],
+        ['area' => 'Senthamangalam', 'lat' => 11.3010, 'lng' => 78.2264],
+        ['area' => 'Tiruchengode', 'lat' => 11.3807, 'lng' => 77.8947],
+        ['area' => 'Rasipuram', 'lat' => 11.4600, 'lng' => 78.1858],
+        ['area' => 'Komarapalayam', 'lat' => 11.4382, 'lng' => 77.6948],
+        ['area' => 'Velur', 'lat' => 11.1092, 'lng' => 78.0023],
+        ['area' => 'Puduchatram', 'lat' => 11.4975, 'lng' => 78.1892],
+        ['area' => 'Nallipalayam', 'lat' => 11.1985, 'lng' => 78.1545],
+        ['area' => 'Kabilarmalai', 'lat' => 11.1564, 'lng' => 77.9291],
+        ['area' => 'Mallasamudram', 'lat' => 11.4906, 'lng' => 77.9014]
+    ];
+
+    foreach ($drivers as $i => &$driver) {
+        $zone = $namakkalZones[$i % count($namakkalZones)];
+        $driver['area'] = $zone['area'];
+        $driver['current_location'] = ['lat' => $zone['lat'], 'lng' => $zone['lng']];
+    }
+    unset($driver);
+
     return $drivers;
 }
 
-// Active SOS Requests - All in Chennai Region
+// Active SOS Requests - All in Namakkal Region
 function getDummyRequests() {
     $users = getDummyUsers();
     $drivers = getDummyDrivers();
     $hospitals = getDummyHospitals();
     
-    // Locations in Chennai District
+    // Locations in Namakkal District
     $locations = [
-        ['name' => 'Saveetha University, Thandalam', 'lat' => 13.0674, 'lng' => 80.1452],
-        ['name' => 'Chennai Central Railway Station', 'lat' => 13.0827, 'lng' => 80.2707],
-        ['name' => 'Anna Nagar', 'lat' => 13.0700, 'lng' => 80.2100],
-        ['name' => 'Koyambedu Bus Stand', 'lat' => 13.0695, 'lng' => 80.1947],
-        ['name' => 'Adyar', 'lat' => 13.0012, 'lng' => 80.2565],
-        ['name' => 'Mylapore', 'lat' => 13.0358, 'lng' => 80.2687],
-        ['name' => 'Vadapalani', 'lat' => 13.0524, 'lng' => 80.2120],
-        ['name' => 'Porur', 'lat' => 13.0386, 'lng' => 80.1581],
-        ['name' => 'Royapettah', 'lat' => 13.0580, 'lng' => 80.1530],
-        ['name' => 'Perambur', 'lat' => 13.1116, 'lng' => 80.2350],
-        ['name' => 'T. Nagar', 'lat' => 13.0418, 'lng' => 80.2341],
-        ['name' => 'Tambaram', 'lat' => 12.9249, 'lng' => 80.1000],
-        ['name' => 'Velachery', 'lat' => 12.9814, 'lng' => 80.2180],
-        ['name' => 'Sholinganallur', 'lat' => 12.9010, 'lng' => 80.2279],
-        ['name' => 'Ambattur', 'lat' => 13.1143, 'lng' => 80.1548]
+        ['name' => 'Namakkal Bus Stand', 'lat' => 11.2194, 'lng' => 78.1678],
+        ['name' => 'Namakkal Railway Station', 'lat' => 11.2222, 'lng' => 78.1601],
+        ['name' => 'Mohanur Road', 'lat' => 11.2147, 'lng' => 78.1734],
+        ['name' => 'Paramathi Road', 'lat' => 11.2108, 'lng' => 78.1810],
+        ['name' => 'Senthamangalam', 'lat' => 11.3010, 'lng' => 78.2264],
+        ['name' => 'Tiruchengode Old Bus Stand', 'lat' => 11.3807, 'lng' => 77.8947],
+        ['name' => 'Rasipuram Market', 'lat' => 11.4600, 'lng' => 78.1858],
+        ['name' => 'Komarapalayam Junction', 'lat' => 11.4382, 'lng' => 77.6948],
+        ['name' => 'Velur', 'lat' => 11.1092, 'lng' => 78.0023],
+        ['name' => 'Puduchatram', 'lat' => 11.4975, 'lng' => 78.1892],
+        ['name' => 'Nallipalayam', 'lat' => 11.1985, 'lng' => 78.1545],
+        ['name' => 'Kabilarmalai', 'lat' => 11.1564, 'lng' => 77.9291],
+        ['name' => 'Mallasamudram', 'lat' => 11.4906, 'lng' => 77.9014],
+        ['name' => 'Mohanur', 'lat' => 11.0588, 'lng' => 78.1402],
+        ['name' => 'Pallipalayam', 'lat' => 11.3383, 'lng' => 77.7330]
     ];
     
     $severities = ['critical', 'high', 'medium', 'low'];
@@ -702,7 +727,7 @@ function getDummyRequests() {
             'user_name' => $user['name'],
             'user_phone' => $user['phone'],
             'location' => $location,
-            'pickup_location' => $location['name'] . ', Chennai District',
+            'pickup_location' => $location['name'] . ', Namakkal District',
             'latitude' => $location['lat'],
             'longitude' => $location['lng'],
             'severity' => $severity,
@@ -753,8 +778,8 @@ function getDummyStats() {
         'total_patients' => count(array_filter($users, fn($u) => $u['role'] === 'user')),
         'avg_response_time' => '4.2',
         'success_rate' => 98.5,
-        'region' => 'Karur District',
-        'center' => 'Karur Town Center'
+        'region' => 'Namakkal District',
+        'center' => 'Namakkal Town Center'
     ];
 }
 
