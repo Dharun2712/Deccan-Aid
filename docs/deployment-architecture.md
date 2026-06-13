@@ -210,3 +210,51 @@ graph TD
     AlertPol -->|Critical| Pager[PagerDuty / SRE]
     AlertPol -->|Warning| Slack[Slack / Dev Team]
 ```
+
+---
+
+## 18. Scalability Architecture & High Availability
+To support emergency traffic spikes without degradation, the architecture leverages dynamic auto-scaling and managed redundancy.
+
+### Scaling Strategy
+- **Horizontal Scaling**: Google Cloud Run is configured to automatically scale out containers based on concurrent requests and CPU utilization. Max instances are configured high enough to absorb sudden regional emergencies.
+- **Load Balancing**: Global Cloud Load Balancing distributes traffic seamlessly to the nearest region.
+
+### Specific Workload Scaling
+- **Emergency SOS Traffic Spikes**: Cloud Run cold starts are mitigated by maintaining minimum active instances (`min-instances`). Load balancing efficiently routes SOS API payloads.
+- **Real-Time Ambulance Tracking**: Socket.IO connections are stateful. To scale Socket.IO across multiple Cloud Run instances, we use a Redis pub/sub adapter (via Google Memorystore) to share events across all WebSocket nodes.
+
+## 19. Integration Considerations
+- **Gemini AI Integrations**: AI calls are asynchronous and implemented with exponential backoff to handle quota limits or rate limiting gracefully.
+- **Google Maps & Firebase**: These managed services scale automatically. API key restrictions and quota alarms are configured to prevent billing abuse.
+- **Mobile Application Updates**: Forced update mechanisms are implemented via Firebase Remote Config to ensure critical bug fixes reach end users immediately.
+
+## 20. Backup Strategy
+- **Database Backups**: MongoDB Atlas provides continuous cloud backups with point-in-time recovery capabilities spanning up to 7 days, and daily snapshots retained for 30 days.
+- **Infrastructure Code**: The entire GCP infrastructure is provisioned using Terraform (Infrastructure as Code) stored in the GitHub repository, serving as a backup of the environment state.
+
+## 21. Disaster Recovery & Business Continuity
+SmartAid is designed for Multi-Region Readiness.
+
+- **Automatic Recovery**: If a Cloud Run instance crashes, it is automatically replaced. If an entire zone fails, the load balancer routes traffic to surviving zones.
+- **Disaster Recovery (DR)**:
+  - **RTO (Recovery Time Objective)**: < 15 minutes.
+  - **RPO (Recovery Point Objective)**: < 5 minutes.
+  - If the primary GCP region experiences a full outage, Terraform scripts can spin up the complete Cloud Run and API Gateway stack in a secondary region within minutes. MongoDB Atlas is deployed as a multi-region cluster, enabling automatic failover to a replica node in a healthy region without data loss.
+
+### Disaster Recovery Workflow
+```mermaid
+graph TD
+    Alert[Region Outage Detected by Cloud Monitoring] --> SRE[SRE Triggered via PagerDuty]
+    SRE --> DBFailover[MongoDB Automatic Failover to Sec. Region]
+    SRE --> RunTF[GitHub Action: Deploy DR Infrastructure]
+    RunTF --> DeployCloudRun[Provision Cloud Run in DR Region]
+    DeployCloudRun --> Reroute[Update Load Balancer / DNS]
+    Reroute --> Resolved[System Restored in DR Region]
+```
+
+## 22. Future Infrastructure Expansion
+As SmartAid grows, the infrastructure will evolve to support:
+- **Dedicated Kubernetes (GKE)**: For finer control over Socket.IO workloads and edge AI processing.
+- **Multi-Cloud Failover**: Expanding database replicas to AWS to mitigate vendor-specific global outages.
+- **Edge Computing**: Utilizing localized nodes in hospitals to pre-process triage data before sending it to the cloud.
