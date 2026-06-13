@@ -55,3 +55,37 @@ To deem the hackathon build a success, the prototype must demonstrate:
 - **Time to Dispatch**: From pressing SOS to Driver acceptance in < 5 seconds.
 - **Tracking Latency**: Socket.IO location updates reflecting on the map in < 500ms.
 - **AI Triage Accuracy**: Gemini accurately extracting primary symptoms into a structured JSON payload from a user's natural language input.
+
+---
+
+## 6. Post-Hackathon Expansion Roadmap
+Transitioning from a hackathon prototype to a production-ready enterprise product requires deepening our feature set and establishing critical partnerships.
+
+### Phase 2: Enterprise Solidification (Months 1-3)
+The focus of Phase 2 is building the infrastructure necessary to onboard our first beta-test hospital network.
+
+- **Phase 2 Features**:
+  - Implementation of HIPAA/GDPR compliant data encryption layers.
+  - Development of a full Web-Based Hospital Command Center Dashboard.
+  - Multi-vehicle dispatch capability for mass casualty incidents (MCI).
+  - Integration with Wearables (Apple Watch/WearOS) for biometric telemetry.
+- **Operational Expansion**:
+  - Launch closed beta program with a local private ambulance fleet.
+  - Establish a 24/7 Site Reliability Engineering (SRE) rotation.
+
+### Phase 3: Ecosystem Integration (Months 4-6)
+Phase 3 focuses on tying SmartAid directly into existing municipal infrastructure to create a seamless handover between our software and physical emergency services.
+
+- **Phase 3 Features**:
+  - Automated billing and insurance verification module.
+  - Advanced route optimization factoring in historical accident data.
+- **Hospital Integrations**:
+  - Direct API integration with popular Electronic Health Record (EHR) systems (e.g., Epic, Cerner) to pre-populate patient charts with AI triage data before arrival.
+- **Emergency Service Integrations**:
+  - establishing a secure API gateway to relay SmartAid SOS signals directly to centralized 911/112 dispatch centers, acting as a high-fidelity augmentation rather than a replacement.
+- **Government Partnerships**:
+  - Engage with local municipalities to execute pilot programs validating SmartAid's efficacy in reducing urban emergency response times.
+
+### Scaling Strategy
+- **Technical Scaling**: Transition to Google Kubernetes Engine (GKE) to handle massive concurrent WebSocket connections.
+- **Market Scaling**: Utilize a B2B2C model, selling the platform as a SaaS solution to private hospitals while offering the Citizen app for free.
