@@ -153,3 +153,60 @@ SmartAid uses a **Blue/Green Deployment** strategy on Cloud Run via traffic spli
 ## 13. Rollback Process
 - **Automated Rollback**: If the new deployment fails health checks or error rates exceed 2% within the first 5 minutes of traffic shifting, Cloud Run automatically reverts 100% traffic to the previous stable revision.
 - **Manual Rollback**: A GitHub Action `Rollback Deploy` workflow can be triggered manually to immediately restore the last known good container image and configuration.
+
+---
+
+## 14. Monitoring & Observability Architecture
+Given the life-critical nature of the SmartAid ecosystem, comprehensive monitoring, logging, and tracing are integrated across all layers.
+
+### Logging Architecture
+- **Cloud Logging (Stackdriver)**: All backend logs, container stdout/stderr, and HTTP access logs are ingested here.
+- **Structured Logging**: The FastAPI application uses JSON-formatted structured logging, embedding Trace IDs to stitch together requests across services.
+
+### Observability & Distributed Tracing
+- **Cloud Trace**: Captures the latency of all internal requests (e.g., FastAPI calling MongoDB or Gemini AI).
+- **Correlation IDs**: A unique `X-Request-ID` is generated at the Cloud Load Balancer and propagated through the API Gateway to the backend to trace the full lifecycle of a user action.
+
+## 15. Metrics & Telemetry
+Various components are monitored for key performance indicators (KPIs).
+
+- **Application Monitoring**:
+  - Request volume (RPS), error rates (HTTP 4xx/5xx), and API latency.
+  - Tracked via Google Cloud Monitoring.
+- **Database Monitoring (MongoDB Atlas)**:
+  - Connection pooling limits, IOPS, CPU utilization, and slow queries.
+- **Realtime Service Monitoring (Socket.IO)**:
+  - Active WebSocket connections, message broadcast latency, and disconnect rates.
+- **AI Service Monitoring**:
+  - Token consumption limits, Gemini API latency, and failure rates.
+
+## 16. Health Checks & Incident Detection
+- **Liveness Probes**: `/health/live` endpoint ensures the FastAPI container is running. If failed, Cloud Run automatically kills and restarts the container.
+- **Readiness Probes**: `/health/ready` checks connections to MongoDB, Firebase, and Redis. Prevents traffic routing until the service is fully ready.
+
+## 17. Alerting Strategy
+Alerting is threshold-based and integrated with incident management tools (e.g., PagerDuty, Slack).
+- **Critical Alerts (P1)**: 
+  - API Error Rate > 2% for 5 minutes.
+  - Database Connection Failure.
+  - SOS Socket Disconnect Spikes.
+  - **Action**: Pages on-call Site Reliability Engineer (SRE).
+- **Warning Alerts (P2)**: 
+  - API Latency > 500ms (p95).
+  - High container CPU usage.
+  - **Action**: Slack notification to the engineering team.
+
+### Monitoring Architecture Diagram
+```mermaid
+graph TD
+    App[FastAPI & Socket.IO] -->|Logs| Logging[Cloud Logging]
+    App -->|Traces| Trace[Cloud Trace]
+    App -->|Metrics| Monitor[Cloud Monitoring]
+    Mongo[MongoDB Atlas] -->|Metrics| AtlasMon[Atlas Dashboard]
+    LB[Cloud Load Balancer] -->|Access Logs & Metrics| Monitor
+    
+    Logging --> AlertPol[Alerting Policies]
+    Monitor --> AlertPol
+    AlertPol -->|Critical| Pager[PagerDuty / SRE]
+    AlertPol -->|Warning| Slack[Slack / Dev Team]
+```
