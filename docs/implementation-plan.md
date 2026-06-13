@@ -218,3 +218,33 @@ The frontend engineering is broken down into specific parallel workstreams.
 - **Acceptance Criteria**: Given a panic phrase ("My dad collapsed and isn't breathing"), AI returns `{"severity": "CRITICAL", "symptoms": ["unconscious", "apnea"]}`.
 
 **Suggested Commit Messages**: `feat(api): implement geospatial querying for nearest ambulance`
+
+---
+
+## 5. Testing, Deployment, and Integration Milestones
+To maintain rapid velocity without compromising stability, strict milestones act as validation gates before code progresses to the next environment.
+
+### Readiness Gates (Pre-Merge)
+- Code compiles without warnings on Flutter and passes all `mypy` strict type-checking on FastAPI.
+- Unit tests pass with > 85% coverage.
+- SonarQube reports 0 critical security vulnerabilities.
+
+### Quality Gates (Post-Merge to `develop`)
+- Automated integration tests verify that the Flutter application can successfully communicate with a transient backend database.
+- Database fixtures properly load and tear down without polluting the state.
+
+### Release Gates (Deployment to Staging/Prod)
+- **Go/No-Go Criteria**: End-to-End core loop (SOS Creation -> Driver Accept -> Hospital Notification) completes successfully on physical devices connected to the Cloud Run backend.
+- Locust load tests simulate 500 concurrent WebSocket connections with < 1% dropped packet rate.
+
+### Integration Milestones
+1. **Frontend-Backend Contract Verification**: FastAPI Swagger matches the Flutter generated API clients.
+2. **Third-Party API Validation**: Firebase, Google Maps, and Gemini tokens are confirmed working via Secret Manager injections.
+
+### Deployment & Monitoring Milestones
+- Cloud Run CI/CD pipeline correctly builds and deploys on Tag creation.
+- Google Cloud Monitoring alerts are configured to page engineers if API 5xx errors exceed 2%.
+
+**Suggested GitHub Issues**: #50 Setup Load Tests, #51 Configure Cloud Logging.
+**Suggested Branch Names**: `chore/testing-gates`, `deploy/staging-env`
+**Suggested Commit Messages**: `test(e2e): configure playwright flow for driver acceptance`
