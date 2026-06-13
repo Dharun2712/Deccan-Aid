@@ -86,3 +86,66 @@ The development is orchestrated across 10 distinct phases.
 **Suggested GitHub Issues**: #1 Setup Monorepo, #2 Setup Firebase Auth
 **Suggested Branch Names**: `chore/repo-setup`, `feature/auth-foundation`
 **Suggested Commit Messages**: `chore: initialize monorepo and CI pipelines`
+
+---
+
+## 3. Frontend Workstreams
+The frontend engineering is broken down into specific parallel workstreams.
+
+### Flutter Setup & Theme System
+- **Tasks**: Initialize Flutter project, configure `pubspec.yaml`, implement global Material 3 theme.
+- **Issues**: #10 Init Flutter, #11 Define Theme Tokens.
+- **Branches**: `feature/ui-foundation`
+- **Deliverables**: Scaffolded app with functioning light/dark mode.
+- **Acceptance Criteria**: App builds without warnings; theme toggles correctly.
+
+### Routing
+- **Tasks**: Implement `go_router`, define protected routes, and splash screen logic.
+- **Issues**: #12 Implement Navigation.
+- **Branches**: `feature/routing`
+- **Deliverables**: Deep-linking enabled routing system.
+- **Acceptance Criteria**: Unauthorized users are redirected to `/login`.
+
+### Authentication UI
+- **Tasks**: Build Login, Registration, and OTP screens. Integrate Firebase SDK.
+- **Issues**: #13 Build Login UI, #14 Firebase Auth Link.
+- **Branches**: `feature/auth-ui`
+- **Deliverables**: Functioning auth flow generating a valid Firebase ID token.
+- **Acceptance Criteria**: User state persists across app restarts.
+
+### Citizen UI
+- **Tasks**: Build main SOS dashboard, permissions request modal, and active incident view.
+- **Issues**: #15 SOS Button UI, #16 Incident Status Screen.
+- **Branches**: `feature/citizen-ui`
+- **Deliverables**: Citizen home screen capable of triggering the SOS event.
+- **Acceptance Criteria**: Location permissions are cleanly handled if denied.
+
+### Driver UI
+- **Tasks**: Build active incoming requests feed, swipe-to-accept UI, and duty toggle.
+- **Issues**: #17 Driver Request Feed, #18 Duty Status Toggle.
+- **Branches**: `feature/driver-ui`
+- **Deliverables**: Driver portal capable of receiving and accepting dispatches.
+- **Acceptance Criteria**: Driver can toggle "Online" and receive simulated push notifications.
+
+### Hospital UI
+- **Tasks**: Build responsive web dashboard for incoming ETA and triage data.
+- **Issues**: #19 Hospital Web Dashboard.
+- **Branches**: `feature/hospital-ui`
+- **Deliverables**: Tablet-optimized overview of inbound ambulances.
+- **Acceptance Criteria**: UI dynamically updates when new triage data is saved.
+
+### Tracking & Maps UI
+- **Tasks**: Integrate `google_maps_flutter`, render custom markers, and draw polylines.
+- **Issues**: #20 Map Integration, #21 Live Tracking Render.
+- **Branches**: `feature/maps-ui`
+- **Deliverables**: Interactive map showing citizen and driver locations.
+- **Acceptance Criteria**: Driver marker moves smoothly based on coordinate updates.
+
+### Notification UI
+- **Tasks**: Configure Firebase Cloud Messaging (FCM) handlers and local push notifications.
+- **Issues**: #22 FCM Setup.
+- **Branches**: `feature/notifications`
+- **Deliverables**: Foreground and background notification handlers.
+- **Acceptance Criteria**: Tapping a notification routes the user to the correct incident screen.
+
+**Suggested Commit Messages**: `feat(ui): implement swipe-to-accept for driver requests`
