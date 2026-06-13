@@ -108,3 +108,20 @@ We utilize tools like **Locust** or **k6** for backend load testing, simulating 
 | **Socket.IO Event Broadcast Latency** | < 150ms | > 500ms |
 | **Gemini AI Triage Response** | < 2.5s | > 5s |
 | **Database Query Execution (Indexed)** | < 20ms | > 100ms |
+
+---
+
+## 11. Security & Reliability Testing Practices
+Due to the processing of sensitive medical data and the critical nature of emergency response, security and reliability are paramount.
+
+### Security & Authentication Testing
+- **Authentication Testing**: Validating Firebase JWT token verification on all protected FastAPI endpoints. Testing expired, malformed, and missing token rejection.
+- **Authorization Testing**: Role-Based Access Control (RBAC) validation. Ensuring a Citizen cannot access Hospital Dashboard APIs, and Drivers cannot access Admin endpoints.
+- **Data Privacy Testing**: Ensuring PII (Personally Identifiable Information) and PHI (Protected Health Information) are encrypted in transit and not accidentally leaked in Cloud Logging or application error responses.
+- **Vulnerability Scanning**: Integration of OWASP ZAP or specialized cloud vulnerability scanners in the CI pipeline to detect common security flaws (e.g., injection, cross-site scripting).
+
+### Reliability & AI Testing
+- **AI Reliability Testing**: Google Gemini integrations are tested for hallucination resilience, strict JSON schema output adherence, and graceful degradation. Tests simulate Gemini API timeouts to ensure the backend falls back to deterministic triage logic instead of crashing.
+- **Network Failure Testing (Chaos Engineering)**: Simulating backend service unreachability to verify that the Flutter mobile app correctly stores state and initiates retry mechanisms.
+- **Offline Mode Testing**: Validating the Flutter app's behavior when a Citizen or Driver loses cellular coverage. Ensuring critical inputs are queued and synced once connectivity is restored.
+- **Disaster Recovery Testing**: Bi-annual Game Days simulating full GCP region outages to validate the automated failover mechanisms and Recovery Time Objectives (RTO).
