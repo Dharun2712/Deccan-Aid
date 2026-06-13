@@ -1,71 +1,88 @@
-# SmartAid Implementation Plan
+# SmartAid Engineering Implementation Plan
 
-This document outlines the step-by-step implementation plan for the SmartAid platform. The project is divided into 11 distinct phases, ensuring a structured progression from foundational setup to final deployment.
+## 1. Implementation Strategy
+The SmartAid platform is a life-critical emergency response system. Our implementation strategy prioritizes **reliability, speed of delivery, and verifiable quality** using an iterative Agile framework tailored for a high-intensity hackathon sprint, transitioning seamlessly into production hardening.
 
-## Phase 1: Repository Setup
-- Initialize Git repository and branch protection rules.
-- Set up the monorepo structure (e.g., `/frontend`, `/backend`, `/docs`).
-- Configure initial CI/CD pipelines via GitHub Actions (Linting, Formatting, basic tests).
-- Provision Google Cloud Platform (GCP) project and configure Secret Manager for secure environment variables.
-- Set up MongoDB Atlas clusters (Development, Staging, Production).
+### Development Methodology
+- **Sprint-Based Agile**: 4-hour micro-sprints during the hackathon, transitioning to 2-week sprints post-hackathon.
+- **Trunk-Based Development**: Short-lived feature branches merged frequently into `develop` via Pull Requests.
+- **Test-Driven Development (TDD) for Critical Paths**: Core routing and dispatch logic must have failing tests written before implementation.
 
-## Phase 2: Flutter Foundation
-- Initialize the Flutter project and configure core dependencies (e.g., Riverpod/Bloc for state management, Dio/HTTP for networking).
-- Establish the design system and UI components (Typography, Colors, Buttons, Cards) in alignment with the UI/UX design.
-- Implement core routing and navigation architecture using `go_router` or `auto_route`.
-- Set up multilingual support (i18n) and accessibility foundations.
+### Team Structure
+- **Frontend Squad**: Focuses on Flutter Citizen/Driver/Hospital apps.
+- **Backend & AI Squad**: Focuses on FastAPI, MongoDB, Socket.IO, and Gemini AI.
+- **DevOps & QA Lead**: Manages Google Cloud, CI/CD, and End-to-End testing integration.
 
-## Phase 3: Authentication
-- Configure Firebase project and enable Firebase Authentication (Email/Password, Google Sign-In, Phone Number OTP).
-- Implement the Backend authentication middleware in FastAPI to decode and verify Firebase JWT tokens.
-- Develop the Flutter UI flows for User Registration, Login, and Password Recovery.
-- Implement Role-Based Access Control (RBAC) to differentiate Citizen, Driver, and Hospital user sessions.
+### Engineering Principles
+- **No Single Point of Failure**: Assume network drops; build offline queues.
+- **API First**: Define OpenAPI/Swagger contracts before writing frontend code.
+- **Shift-Left Security**: Never commit API keys; utilize Secret Manager from Day 1.
 
-## Phase 4: Emergency SOS
-- Develop the backend FastAPI endpoints for creating and managing SOS Incident records.
-- Implement geolocation services in Flutter to capture precise user coordinates when SOS is triggered.
-- Build the 1-Click SOS UI interface on the Citizen app.
-- Integrate Google Maps API to visually display the user's location and nearest available medical facilities.
+---
 
-## Phase 5: Driver Module
-- Build the dedicated Ambulance Driver interface in Flutter.
-- Implement a dashboard for drivers to receive incoming SOS broadcast alerts.
-- Develop the logic for drivers to accept or decline emergency requests.
-- Implement the route navigation UI using Google Maps integration to guide the driver to the incident location.
+## 2. Project Phases & Workstreams
+The development is orchestrated across 10 distinct phases.
 
-## Phase 6: Hospital Module
-- Develop the Hospital Web Dashboard or dedicated tablet view.
-- Create backend endpoints for hospitals to update their real-time capacity and capabilities (e.g., ER beds available, specialized trauma units).
-- Implement pre-arrival notifications that alert hospitals of incoming ambulances.
-- Integrate the transmission of preliminary patient data and estimated time of arrival (ETA) to the hospital dashboard.
+### Phase 0: Repository Foundation
+- **Objectives**: Establish the monorepo structure, CI/CD pipelines, and cloud environments.
+- **Deliverables**: GitHub Actions, Linter setups, Terraform scripts for GCP.
+- **Dependencies**: GCP Billing Account, GitHub Admin Access.
+- **Success Criteria**: A merged PR triggers an automated build and linting check successfully.
 
-## Phase 7: Real-Time Tracking
-- Integrate `Socket.IO` or WebSocket server on the FastAPI backend for real-time bi-directional communication.
-- Implement real-time GPS telemetry streaming from the Driver's app to the backend.
-- Update the Citizen and Hospital apps to subscribe to the location streams and render the moving ambulance on the map.
-- Implement auto-reconnect and state recovery mechanisms for mobile users experiencing temporary network drops.
+### Phase 1: Flutter Foundation
+- **Objectives**: Setup the base Flutter project, state management (Riverpod/Bloc), and routing.
+- **Deliverables**: Blank functioning apps for Citizen, Driver, and Hospital.
+- **Dependencies**: Phase 0.
+- **Success Criteria**: Apps compile and launch on iOS and Android simulators with base routing intact.
 
-## Phase 8: Gemini AI
-- Integrate the Google Gemini API into the FastAPI backend.
-- Develop the prompt engineering logic to process natural language inputs from the citizen.
-- Implement the conversational AI Chatbot interface in the Flutter app to collect triage information securely.
-- Structure the AI output into actionable JSON data (e.g., extracting primary symptoms, severity estimation) to be sent to the assigned hospital.
+### Phase 2: Authentication
+- **Objectives**: Secure the application using Firebase Authentication and JWT middleware.
+- **Deliverables**: Login/Signup screens, Firebase integration, FastAPI auth dependency injection.
+- **Dependencies**: Phase 1.
+- **Success Criteria**: Users can register, log in, and access a protected `/me` backend endpoint.
 
-## Phase 9: Accident Detection
-- Integrate native device APIs (accelerometer, gyroscope) in the Flutter app to detect sudden impacts or falls.
-- Develop an intelligent background worker that processes sensor data to identify potential crash signatures.
-- Implement an automated fail-safe mechanism: prompting the user after a detected impact, and automatically dispatching an SOS if the user is unresponsive within a predefined countdown.
+### Phase 3: Emergency SOS
+- **Objectives**: Core functionality to dispatch an emergency request with GPS coordinates.
+- **Deliverables**: SOS UI Button, Location permissions, Incident creation API.
+- **Dependencies**: Phase 2.
+- **Success Criteria**: Clicking SOS creates a new incident in MongoDB with accurate geospatial data.
 
-## Phase 10: Testing
-- **Unit Testing**: Write unit tests for FastAPI business logic and Flutter Widgets/Blocs.
-- **Integration Testing**: Implement end-to-end API tests and database interaction tests.
-- **E2E Testing**: Set up automated UI flows mimicking user journeys using Flutter Integration Test or Appium.
-- **Performance Testing**: Execute load testing on the Socket.IO server and FastAPI endpoints using tools like Locust or k6.
-- Resolve any bugs or performance bottlenecks discovered.
+### Phase 4: Driver Operations
+- **Objectives**: Enable ambulance drivers to receive and accept incoming SOS requests.
+- **Deliverables**: Driver Dashboard, Accept/Decline APIs, Dispatch assignment logic.
+- **Dependencies**: Phase 3.
+- **Success Criteria**: An incident changes state from "Pending" to "Accepted" with a linked Driver ID.
 
-## Phase 11: Deployment
-- Containerize the FastAPI backend using Docker and optimize image size.
-- Push images to Google Artifact Registry.
-- Deploy the backend and real-time services to Google Cloud Run, configuring auto-scaling and memory limits.
-- Set up Custom Domains, SSL Certificates, and Cloud Load Balancing.
-- Build the production release APKs/AABs for Android and IPAs for iOS, submitting them to the respective App Stores for review.
+### Phase 5: Hospital Coordination
+- **Objectives**: Hospital dashboard to view incoming patients and manage bed capacity.
+- **Deliverables**: Web-responsive dashboard, Hospital API endpoints.
+- **Dependencies**: Phase 4.
+- **Success Criteria**: Hospitals receive an alert when a driver assigned to their facility accepts an SOS.
+
+### Phase 6: Real-Time Tracking
+- **Objectives**: Live location streaming from the ambulance to the citizen and hospital.
+- **Deliverables**: Socket.IO server, Flutter WebSocket client, Google Maps Polylines.
+- **Dependencies**: Phase 4.
+- **Success Criteria**: Citizen map smoothly updates driver icon position < 500ms after driver moves.
+
+### Phase 7: AI Services
+- **Objectives**: Integrate Gemini AI for triage chat and automated symptom extraction.
+- **Deliverables**: Chat UI, Gemini API integration, JSON prompt engineering.
+- **Dependencies**: Phase 3.
+- **Success Criteria**: AI chat successfully outputs a structured JSON triage report saved to the incident record.
+
+### Phase 8: Testing
+- **Objectives**: Validate system integrity under load and edge cases.
+- **Deliverables**: Unit test suites, Integration tests, Locust load testing scripts.
+- **Dependencies**: Phases 1-7.
+- **Success Criteria**: > 85% Code Coverage and p95 latency < 500ms on load tests.
+
+### Phase 9: Deployment
+- **Objectives**: Containerize and deploy the application to production environments.
+- **Deliverables**: Dockerfiles, Cloud Run services, API Gateway, App Store deployments.
+- **Dependencies**: Phase 8.
+- **Success Criteria**: System is accessible via public domains and apps are in TestFlight/Google Play Console.
+
+**Suggested GitHub Issues**: #1 Setup Monorepo, #2 Setup Firebase Auth
+**Suggested Branch Names**: `chore/repo-setup`, `feature/auth-foundation`
+**Suggested Commit Messages**: `chore: initialize monorepo and CI pipelines`
