@@ -46,3 +46,59 @@ graph TD
 - **Public Zone**: Client devices to Load Balancer. All data is encrypted via TLS 1.3.
 - **DMZ Zone**: Load Balancer to Cloud Run instances. Protected by Cloud Armor policies.
 - **Private Zone**: Cloud Run to MongoDB Atlas (via VPC Peering/PrivateLink). No internet access allowed directly to the database.
+
+---
+
+## 6. Containerization Strategy & Docker Architecture
+SmartAid relies on Docker for containerizing the FastAPI and Socket.IO microservices.
+- **Base Image**: Lightweight `python:3.11-slim` to minimize the attack surface.
+- **Multi-Stage Builds**: Used to separate build dependencies from runtime dependencies, optimizing image size and security.
+- **Stateless Architecture**: Containers do not store any local state. All state is externalized to MongoDB Atlas or managed via Socket.IO Redis adapters (if scaled).
+
+## 7. Environment Strategy
+SmartAid maintains strict environment separation to ensure code stability from development to production.
+
+- **Development**: Local environment utilizing Docker Compose. Connects to a local MongoDB instance or a dedicated dev-cloud database.
+- **Staging**: A mirror of the production environment. Used for QA, integration testing, and client sign-off. Deployed to a separate GCP project to enforce absolute isolation.
+- **Production**: The live environment serving real SOS requests, ambulance tracking, and hospital coordination.
+
+## 8. Configuration Management
+Environment-specific configurations are managed via `.env` files. Configuration inheritance is used where possible, with specific overrides per environment.
+
+### `.env.development`
+```env
+ENVIRONMENT=development
+DEBUG=True
+DATABASE_URI=mongodb://localhost:27017/smartaid_dev
+FIREBASE_PROJECT_ID=smartaid-dev-project
+CORS_ORIGINS=http://localhost:3000,*
+LOG_LEVEL=DEBUG
+```
+
+### `.env.staging`
+```env
+ENVIRONMENT=staging
+DEBUG=False
+DATABASE_URI=${SECRET_MANAGER_MONGO_STAGING_URI}
+FIREBASE_PROJECT_ID=smartaid-staging-project
+CORS_ORIGINS=https://staging.smartaid.com
+LOG_LEVEL=INFO
+```
+
+### `.env.production`
+```env
+ENVIRONMENT=production
+DEBUG=False
+DATABASE_URI=${SECRET_MANAGER_MONGO_PROD_URI}
+FIREBASE_PROJECT_ID=smartaid-prod-project
+CORS_ORIGINS=https://app.smartaid.com,https://admin.smartaid.com
+LOG_LEVEL=WARNING
+```
+
+## 9. Secrets Management
+Hardcoding secrets is strictly prohibited.
+- **Google Secret Manager**: The central vault for all sensitive data (e.g., `DATABASE_URI`, `GEMINI_API_KEY`, `FIREBASE_SERVICE_ACCOUNT`).
+- **Runtime Injection**: Cloud Run automatically injects secrets from Secret Manager as environment variables at runtime.
+- **Secret Rotation Strategy**: 
+  - API keys and service accounts are automatically rotated every 90 days.
+  - Emergency manual rotation playbooks are defined for suspected compromises.
