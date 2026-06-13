@@ -102,3 +102,54 @@ Hardcoding secrets is strictly prohibited.
 - **Secret Rotation Strategy**: 
   - API keys and service accounts are automatically rotated every 90 days.
   - Emergency manual rotation playbooks are defined for suspected compromises.
+
+---
+
+## 10. CI/CD Architecture & GitHub Actions
+SmartAid utilizes GitHub Actions for continuous integration and continuous deployment, ensuring that code moves reliably from development to production.
+
+### Workflow Design
+1. **Feature Branches (`feature/*`, `bugfix/*`)**:
+   - Trigger: Push to branch.
+   - Action: Linting, Unit Tests, Static Code Analysis (SonarQube).
+   - Gate: Must pass all tests to allow PR creation.
+
+2. **Develop Branch (`develop`)**:
+   - Trigger: Merge PR from Feature Branch.
+   - Action: Full test suite, Build Docker Image, Push to Google Artifact Registry, Deploy to Staging Environment.
+   - Gate: End-to-end tests run against Staging.
+
+3. **Main Branch (`main`)**:
+   - Trigger: Merge PR from Develop.
+   - Action: Pre-release checks. Prepares release candidate.
+
+4. **Production Releases (Tags `v*.*.*`)**:
+   - Trigger: Creation of a semantic version tag (e.g., `v1.2.0`).
+   - Action: Build Production Docker Image, Push to Google Artifact Registry, Deploy to Production Cloud Run (Blue/Green Deployment).
+   - Gate: Requires manual approval from DevOps/Lead Engineer in GitHub Actions before executing production deploy.
+
+## 11. Pipeline Diagrams
+
+```mermaid
+graph LR
+    Dev[Developer Push] -->|Feature Branch| CI[GitHub Actions CI]
+    CI -->|Lint & Test| PR[Pull Request Validation]
+    PR -->|Merge| DevBranch[Develop Branch]
+    DevBranch --> BuildStaging[Build & Push Image]
+    BuildStaging --> DeployStaging[Deploy to Staging]
+    DeployStaging --> E2E[E2E Tests]
+    E2E -->|Approve PR| MainBranch[Main Branch]
+    MainBranch -->|Tag v*.*.*| BuildProd[Build & Push Prod Image]
+    BuildProd --> DeployProd[Deploy to Production]
+```
+
+## 12. Release Strategy
+SmartAid uses a **Blue/Green Deployment** strategy on Cloud Run via traffic splitting:
+- A new revision (Green) is deployed with 0% traffic.
+- Health checks are verified against the Green revision.
+- Traffic is incrementally shifted (e.g., 10% -> 50% -> 100%) to the new revision.
+- If errors spike, traffic is immediately routed back to the old revision (Blue).
+
+## 13. Rollback Process
+- **Automated Rollback**: If the new deployment fails health checks or error rates exceed 2% within the first 5 minutes of traffic shifting, Cloud Run automatically reverts 100% traffic to the previous stable revision.
+- **Manual Rollback**: A GitHub Action `Rollback Deploy` workflow can be triggered manually to immediately restore the last known good container image and configuration.
