@@ -1,13 +1,60 @@
 <?php
 /**
  * Smart Ambulance System - Configuration
- * Namakkal Region - Namakkal Town Center
+ * Reva University Bangalore - Reva University Bangalore
  */
+
+/**
+ * Minimal dotenv loader for local XAMPP usage.
+ * Loads key=value pairs from .env into process env/$_ENV/$_SERVER.
+ */
+function loadLocalEnv(string $filePath): void {
+    if (!file_exists($filePath) || !is_readable($filePath)) {
+        return;
+    }
+
+    $lines = file($filePath, FILE_IGNORE_NEW_LINES | FILE_SKIP_EMPTY_LINES);
+    if (!is_array($lines)) {
+        return;
+    }
+
+    foreach ($lines as $line) {
+        $line = trim((string) $line);
+        if ($line === '' || str_starts_with($line, '#')) {
+            continue;
+        }
+
+        $parts = explode('=', $line, 2);
+        if (count($parts) !== 2) {
+            continue;
+        }
+
+        $name = trim($parts[0]);
+        $value = trim($parts[1]);
+        if ($name === '') {
+            continue;
+        }
+
+        // Remove wrapping quotes if present.
+        if (
+            strlen($value) >= 2 &&
+            (($value[0] === '"' && $value[strlen($value) - 1] === '"') || ($value[0] === "'" && $value[strlen($value) - 1] === "'"))
+        ) {
+            $value = substr($value, 1, -1);
+        }
+
+        putenv($name . '=' . $value);
+        $_ENV[$name] = $value;
+        $_SERVER[$name] = $value;
+    }
+}
+
+loadLocalEnv(__DIR__ . DIRECTORY_SEPARATOR . '.env');
 
 // =====================================
 // MONGODB ATLAS CONFIGURATION
 // =====================================
-$mongoUri = getenv('MONGODB_URI') ?: '';
+$mongoUri = getenv('MONGODB_URI') ?: (getenv('MONGO_URI') ?: '');
 $mongoDbName = getenv('MONGODB_DB') ?: 'smart_ambulance';
 define('MONGODB_URI', $mongoUri);
 define('MONGODB_DB', $mongoDbName);
@@ -24,7 +71,11 @@ function getMongoDb(): ?\MongoDB\Database {
         $vendorAutoload = __DIR__ . '/vendor/autoload.php';
         if (!file_exists($vendorAutoload)) return null;
         require_once $vendorAutoload;
-        $client = new \MongoDB\Client(MONGODB_URI);
+        $client = new \MongoDB\Client(MONGODB_URI, [
+            'connectTimeoutMS'       => 5000,
+            'socketTimeoutMS'        => 15000,
+            'serverSelectionTimeoutMS' => 5000,
+        ]);
         $db = $client->selectDatabase(MONGODB_DB);
         return $db;
     } catch (\Exception $e) {
@@ -33,12 +84,191 @@ function getMongoDb(): ?\MongoDB\Database {
 }
 
 /**
- * Fetch alerts from MongoDB Atlas → smart_ambulance.patient_requests
+ * Decode JSON output from Python bridge command.
+ * Handles occasional extra logs by extracting the JSON payload.
+ */
+function decodePythonBridgeOutput(string $output): ?array {
+    $output = trim($output);
+    if ($output === '') return null;
+
+    $decoded = json_decode($output, true);
+    if (is_array($decoded)) return $decoded;
+
+    $firstBrace = strpos($output, '{');
+    $lastBrace = strrpos($output, '}');
+    if ($firstBrace === false || $lastBrace === false || $lastBrace <= $firstBrace) {
+        return null;
+    }
+
+    $jsonChunk = substr($output, $firstBrace, $lastBrace - $firstBrace + 1);
+    $decoded = json_decode($jsonChunk, true);
+    return is_array($decoded) ? $decoded : null;
+}
+
+/**
+ * Execute Python bridge script to fetch live dashboard data.
+ */
+function runPythonDashboardBridge(): ?array {
+    $scriptPath = __DIR__ . DIRECTORY_SEPARATOR . 'fetch_mongo.py';
+    if (!file_exists($scriptPath)) return null;
+    if (!function_exists('shell_exec')) return null;
+
+    $commands = [];
+    $envPython = trim((string) (getenv('PYTHON_EXECUTABLE') ?: ''));
+    if ($envPython !== '') {
+        $commands[] = escapeshellarg($envPython) . ' ' . escapeshellarg($scriptPath);
+    }
+    $commands[] = 'python ' . escapeshellarg($scriptPath);
+    $commands[] = 'py -3 ' . escapeshellarg($scriptPath);
+    $commands = array_values(array_unique($commands));
+
+    foreach ($commands as $command) {
+        $raw = shell_exec($command . ' 2>&1');
+        if (!is_string($raw) || trim($raw) === '') continue;
+
+        $decoded = decodePythonBridgeOutput($raw);
+        if (!is_array($decoded)) continue;
+        if (!empty($decoded['error'])) continue;
+
+        return $decoded;
+    }
+
+    return null;
+}
+
+/**
+ * Cached live dashboard payload from Python bridge.
+ */
+function getLiveDashboardData(): ?array {
+    static $loaded = false;
+    static $cache = null;
+
+    if ($loaded) return $cache;
+
+    $loaded = true;
+    $cache = runPythonDashboardBridge();
+    return $cache;
+}
+
+/**
+ * Shared list of request statuses considered active in dashboard metrics.
+ */
+function getActiveRequestStatuses(): array {
+    return [
+        'pending',
+        'accepted',
+        'assigned',
+        'in_progress',
+        'en_route',
+        'arrived',
+        'picked_up',
+        'detected',
+        'admitted',
+        'assessed',
+        'accepted_by_hospital',
+    ];
+}
+
+/**
+ * Filter helper for endpoint query params.
+ */
+function filterByQueryField(array $items, string $field, ?string $value): array {
+    $needle = strtolower(trim((string) ($value ?? '')));
+    if ($needle === '' || $needle === 'all') return array_values($items);
+
+    return array_values(array_filter($items, function ($item) use ($field, $needle) {
+        return strtolower((string) ($item[$field] ?? '')) === $needle;
+    }));
+}
+
+/**
+ * Build stats object from live payload with safe defaults.
+ */
+function buildLiveStats(array $liveData): array {
+    $requests = is_array($liveData['requests'] ?? null) ? $liveData['requests'] : [];
+    $drivers = is_array($liveData['drivers'] ?? null) ? $liveData['drivers'] : [];
+    $hospitals = is_array($liveData['hospitals'] ?? null) ? $liveData['hospitals'] : [];
+    $users = is_array($liveData['users'] ?? null) ? $liveData['users'] : [];
+    $activeStatuses = getActiveRequestStatuses();
+
+    $activeRequests = array_values(array_filter($requests, fn($r) => in_array(strtolower((string) ($r['status'] ?? 'pending')), $activeStatuses, true)));
+    $completedRequests = array_values(array_filter($requests, fn($r) => strtolower((string) ($r['status'] ?? '')) === 'completed'));
+    $criticalRequests = array_values(array_filter($activeRequests, fn($r) => strtolower((string) ($r['severity'] ?? 'medium')) === 'critical'));
+    $availableDrivers = array_values(array_filter($drivers, fn($d) => strtolower((string) ($d['status'] ?? 'offline')) === 'available'));
+    $busyDrivers = array_values(array_filter($drivers, fn($d) => strtolower((string) ($d['status'] ?? 'offline')) === 'busy'));
+    $totalPatients = array_values(array_filter($users, fn($u) => strtolower((string) ($u['role'] ?? 'user')) === 'user'));
+
+    $totalRequests = count($requests);
+    $successRate = $totalRequests > 0 ? round((count($completedRequests) / $totalRequests) * 100, 1) : 98.5;
+
+    $defaults = [
+        'total_requests' => $totalRequests,
+        'active_requests' => count($activeRequests),
+        'completed_requests' => count($completedRequests),
+        'critical_requests' => count($criticalRequests),
+        'available_drivers' => count($availableDrivers),
+        'total_drivers' => count($drivers),
+        'busy_drivers' => count($busyDrivers),
+        'total_hospitals' => count($hospitals),
+        'total_users' => count($users),
+        'total_patients' => count($totalPatients),
+        'avg_response_time' => '4.2',
+        'success_rate' => $successRate,
+        'region' => 'Reva University Bangalore',
+        'center' => 'Reva University Bangalore'
+    ];
+
+    $liveStats = is_array($liveData['stats'] ?? null) ? $liveData['stats'] : [];
+    return array_merge($defaults, $liveStats);
+}
+
+/**
+ * Alerts fallback using the Python bridge payload.
+ */
+function getAlertsFromPythonBridge(): array {
+    $liveData = getLiveDashboardData();
+    if (!is_array($liveData)) return [];
+
+    $requests = is_array($liveData['requests'] ?? null) ? $liveData['requests'] : [];
+    $activeStatuses = getActiveRequestStatuses();
+    $alerts = [];
+
+    foreach ($requests as $request) {
+        $status = strtolower((string) ($request['status'] ?? 'pending'));
+        if (!in_array($status, $activeStatuses, true)) continue;
+
+        $location = $request['location'] ?? [];
+        $alerts[] = [
+            '_id' => $request['_id'] ?? ($request['request_id'] ?? uniqid('req_', true)),
+            'user_name' => $request['user_name'] ?? 'Unknown',
+            'user_phone' => $request['user_phone'] ?? '',
+            'emergency_type' => $request['emergency_type'] ?? 'Emergency',
+            'severity' => strtolower((string) ($request['severity'] ?? 'medium')),
+            'status' => $status,
+            'location' => [
+                'name' => $location['name'] ?? ($request['pickup_location'] ?? 'Bangalore'),
+                'lat' => $location['lat'] ?? ($request['latitude'] ?? null),
+                'lng' => $location['lng'] ?? ($request['longitude'] ?? null),
+            ],
+            'driver_name' => $request['driver_name'] ?? null,
+            'hospital_id' => $request['hospital_id'] ?? null,
+            'auto_triggered' => stripos((string) ($request['emergency_type'] ?? ''), 'accident') !== false,
+            'impact_force' => $request['impact_force'] ?? null,
+            'vitals' => $request['vitals'] ?? null,
+            'created_at' => $request['created_at'] ?? null,
+        ];
+    }
+
+    return $alerts;
+}
+
+/**
+ * Fetch alerts from MongoDB Atlas -> smart_ambulance.patient_requests
  * Maps real fields to the format the alerts UI expects.
  */
 function getAlertsFromMongo(): array {
     $db = getMongoDb();
-    if ($db === null) return [];
+    if ($db === null) return getAlertsFromPythonBridge();
     try {
         // Map severity from preliminary_severity / injury_level
         $severityMap = [
@@ -156,7 +386,7 @@ function getAlertsFromMongo(): array {
 
         return $alerts;
     } catch (\Exception $e) {
-        return [];
+        return getAlertsFromPythonBridge();
     }
 }
 
@@ -164,13 +394,13 @@ function getAlertsFromMongo(): array {
 define('API_BASE_URL', '');
 define('ADMIN_API_URL', '');
 
-// Namakkal Region Coordinates - Namakkal Town Center
-define('REGION_CENTER_LAT', 11.2194);
-define('REGION_CENTER_LNG', 78.1678);
-define('REGION_NAME', 'Namakkal District');
+// Reva University Bangalore Coordinates - Reva University Bangalore
+define('REGION_CENTER_LAT', 13.1165);
+define('REGION_CENTER_LNG', 77.6341);
+define('REGION_NAME', 'Reva University Bangalore');
 
 // =====================================
-// DUMMY DATA - NAMAKKAL REGION
+// DUMMY DATA - Reva University Bangalore
 // =====================================
 
 
@@ -308,137 +538,137 @@ function getDummyUsers() {
     return $users;
 }
 
-// Namakkal Region Hospitals
+// Reva University Bengaluru Hospitals
 function getDummyHospitals() {
     return [
         [
             '_id' => 'HOSP001',
-            'name' => 'Government Medical College Hospital, Namakkal',
-            'type' => 'Government Medical College Hospital',
-            'phone' => '04286-266999',
-            'address' => 'Trichy Main Road, Namakkal - 637001',
+            'name' => 'Aster CMI Hospital',
+            'type' => 'Multi-Specialty Hospital',
+            'phone' => '080 4342 0100',
+            'address' => '43/2, New Airport Road, NH 44, Sahakara Nagar, Hebbal, Bengaluru - 560092',
             'status' => 'available',
-            'capacity' => ['total' => 200, 'occupied' => 142, 'icu' => 30],
-            'specialties' => ['Emergency', 'Cardiology', 'Neurology', 'ICU', 'Surgery', 'Orthopedics'],
-            'location' => ['lat' => 11.2194, 'lng' => 78.1682],
-            'distance' => '0.8 km',
+            'capacity' => ['total' => 500, 'occupied' => 352, 'icu' => 72],
+            'specialties' => ['Emergency', 'Trauma Care', 'Cardiology', 'Neurology', 'Orthopedics', 'ICU'],
+            'location' => ['lat' => 13.0468, 'lng' => 77.5926],
+            'distance' => '11.3 km',
             'rating' => 4.8
         ],
         [
             '_id' => 'HOSP002',
-            'name' => 'Maruthi Hospital',
+            'name' => 'Manipal Hospital, Yelahanka',
             'type' => 'Multi-Specialty Hospital',
-            'phone' => 'Not listed',
-            'address' => 'Namakkal Bazaar, opposite CBCID Office, Salem Road, Swamy Nagar, Namakkal - 637001',
+            'phone' => '080 2216 3333',
+            'address' => 'Doddaballapur Main Road, Kogilu Cross, Yelahanka, Bengaluru - 560064',
             'status' => 'available',
-            'capacity' => ['total' => 60, 'occupied' => 38, 'icu' => 8],
-            'specialties' => ['Emergency', 'Trauma Care', 'General Medicine', 'ICU'],
-            'location' => ['lat' => 11.2201, 'lng' => 78.1658],
-            'distance' => '0.9 km',
-            'rating' => 4.0
+            'capacity' => ['total' => 350, 'occupied' => 241, 'icu' => 45],
+            'specialties' => ['Emergency', 'Cardiology', 'Neurology', 'Nephrology', 'Orthopedics', 'ICU'],
+            'location' => ['lat' => 13.1005, 'lng' => 77.5963],
+            'distance' => '5.2 km',
+            'rating' => 4.6
         ],
         [
             '_id' => 'HOSP003',
-            'name' => 'M.M. Hospital',
-            'type' => 'Private Hospital',
-            'phone' => '096262 10000 / 082382 38233',
-            'address' => '6/288 Trichy Road, Andavar Nagar, Namakkal - 637001',
+            'name' => 'Prolife Hospital',
+            'type' => 'Multi-Specialty Hospital',
+            'phone' => '080 2809 4444',
+            'address' => 'Venkatala Village, Yelahanka, Bengaluru - 560064',
             'status' => 'available',
-            'capacity' => ['total' => 120, 'occupied' => 78, 'icu' => 15],
-            'specialties' => ['General Medicine', 'Gynecology', 'Maternity', 'Pediatrics', 'Surgery'],
-            'location' => ['lat' => 11.2098, 'lng' => 78.1762],
-            'distance' => '2.0 km',
-            'rating' => 4.7
+            'capacity' => ['total' => 180, 'occupied' => 112, 'icu' => 20],
+            'specialties' => ['Emergency', 'General Medicine', 'Orthopedics', 'Pediatrics', 'Surgery'],
+            'location' => ['lat' => 13.1002, 'lng' => 77.5908],
+            'distance' => '5.8 km',
+            'rating' => 4.2
         ],
         [
             '_id' => 'HOSP004',
-            'name' => 'CM Speciality Hospital (CM Best)',
+            'name' => 'Omega Multispeciality Hospital',
             'type' => 'Private Hospital',
-            'phone' => '094875 55800',
-            'address' => 'Mohanur-Namakkal Road, Gandhi Nagar, Namakkal - 637001',
+            'phone' => '080 4249 9999',
+            'address' => 'Yelahanka New Town, Bengaluru - 560064',
             'status' => 'available',
-            'capacity' => ['total' => 100, 'occupied' => 64, 'icu' => 12],
-            'specialties' => ['General Medicine', 'Orthopedics', 'Surgery', 'Pediatrics'],
-            'location' => ['lat' => 11.2166, 'lng' => 78.1739],
-            'distance' => '1.5 km',
-            'rating' => 3.8
+            'capacity' => ['total' => 140, 'occupied' => 89, 'icu' => 16],
+            'specialties' => ['General Medicine', 'Orthopedics', 'ENT', 'Pediatrics', 'Emergency'],
+            'location' => ['lat' => 13.1059, 'lng' => 77.5969],
+            'distance' => '4.9 km',
+            'rating' => 4.1
         ],
         [
             '_id' => 'HOSP005',
-            'name' => 'Government Headquarters Hospital (GH), Namakkal',
-            'type' => 'Government Hospital',
-            'phone' => 'Not listed',
-            'address' => 'District Headquarters, Namakkal Town - 637001',
+            'name' => 'Navachethana Hospital',
+            'type' => 'General Hospital',
+            'phone' => '080 2846 0000',
+            'address' => 'Sector B, Yelahanka New Town, Bengaluru - 560064',
             'status' => 'available',
-            'capacity' => ['total' => 80, 'occupied' => 51, 'icu' => 10],
+            'capacity' => ['total' => 120, 'occupied' => 74, 'icu' => 12],
             'specialties' => ['General Medicine', 'ENT', 'Dermatology', 'Surgery'],
-            'location' => ['lat' => 11.2180, 'lng' => 78.1670],
-            'distance' => '0.7 km',
+            'location' => ['lat' => 13.1015, 'lng' => 77.5942],
+            'distance' => '5.4 km',
             'rating' => 4.2
         ],
         [
             '_id' => 'HOSP006',
-            'name' => 'J.K.K. Nataraja Hospital, Komarapalayam',
+            'name' => 'Bangalore Baptist Hospital',
             'type' => 'Multi-Specialty Hospital',
-            'phone' => '04288-260500',
-            'address' => 'NH-544, Komarapalayam - 638183',
+            'phone' => '080 2202 4700',
+            'address' => 'Bellary Road, Hebbal, Bengaluru - 560024',
             'status' => 'available',
-            'capacity' => ['total' => 150, 'occupied' => 98, 'icu' => 20],
-            'specialties' => ['Cardiology', 'Nephrology', 'Gastroenterology', 'Emergency', 'ICU', 'Dialysis'],
-            'location' => ['lat' => 11.4388, 'lng' => 77.6957],
-            'distance' => '34.7 km',
-            'rating' => 4.6
+            'capacity' => ['total' => 340, 'occupied' => 236, 'icu' => 40],
+            'specialties' => ['Emergency', 'General Medicine', 'Cardiology', 'Oncology', 'Orthopedics', 'ICU'],
+            'location' => ['lat' => 13.0379, 'lng' => 77.5945],
+            'distance' => '12.2 km',
+            'rating' => 4.5
         ],
         [
             '_id' => 'HOSP007',
-            'name' => 'Nalam Multispeciality Hospital, Namakkal',
-            'type' => 'Private Hospital',
-            'phone' => '04286-221400',
-            'address' => 'Paramathi Road, Namakkal - 637002',
+            'name' => 'Motherhood Hospital, Hebbal',
+            'type' => 'Specialty Hospital',
+            'phone' => '080 6723 8888',
+            'address' => 'Sahakara Nagar, Hebbal, Bengaluru - 560092',
             'status' => 'available',
-            'capacity' => ['total' => 90, 'occupied' => 58, 'icu' => 12],
-            'specialties' => ['General Medicine', 'Gynecology', 'Maternity', 'Surgery', 'Pediatrics'],
-            'location' => ['lat' => 11.2112, 'lng' => 78.1796],
-            'distance' => '1.9 km',
+            'capacity' => ['total' => 110, 'occupied' => 66, 'icu' => 12],
+            'specialties' => ['Maternity', 'Neonatology', 'Pediatrics', 'Gynecology', 'Emergency'],
+            'location' => ['lat' => 13.0489, 'lng' => 77.5917],
+            'distance' => '10.9 km',
             'rating' => 4.3
         ],
         [
             '_id' => 'HOSP008',
-            'name' => 'Sakthi Hospital, Senthamangalam',
-            'type' => 'Government Hospital',
-            'phone' => '04286-250450',
-            'address' => 'Main Road, Senthamangalam - 637409',
+            'name' => 'Ramaiah Memorial Hospital',
+            'type' => 'Multi-Specialty Hospital',
+            'phone' => '080 4050 3000',
+            'address' => 'MSR Nagar, New BEL Road, Bengaluru - 560054',
             'status' => 'available',
-            'capacity' => ['total' => 300, 'occupied' => 214, 'icu' => 40],
-            'specialties' => ['Emergency', 'Trauma Care', 'General Medicine', 'Surgery', 'Oncology', 'Pediatrics', 'Orthopedics'],
-            'location' => ['lat' => 11.3015, 'lng' => 78.2271],
-            'distance' => '12.6 km',
+            'capacity' => ['total' => 420, 'occupied' => 295, 'icu' => 60],
+            'specialties' => ['Emergency', 'Trauma Care', 'General Medicine', 'Surgery', 'Oncology', 'Neurology', 'Orthopedics'],
+            'location' => ['lat' => 13.0292, 'lng' => 77.5547],
+            'distance' => '16.8 km',
             'rating' => 4.7
         ],
         [
             '_id' => 'HOSP009',
-            'name' => 'Sri Venkateswara Hospital, Velur',
-            'type' => 'Government Hospital',
-            'phone' => '04268-220890',
-            'address' => 'Velur Main Road, Namakkal - 638182',
+            'name' => 'Akash Hospital, Devanahalli',
+            'type' => 'Multi-Specialty Hospital',
+            'phone' => '080 4346 0000',
+            'address' => 'Prasannahalli Main Road, Devanahalli, Bengaluru - 562110',
             'status' => 'available',
-            'capacity' => ['total' => 180, 'occupied' => 119, 'icu' => 20],
-            'specialties' => ['Emergency', 'General Medicine', 'Maternity', 'Surgery', 'Pediatrics'],
-            'location' => ['lat' => 11.1088, 'lng' => 78.0018],
-            'distance' => '26.3 km',
+            'capacity' => ['total' => 220, 'occupied' => 143, 'icu' => 24],
+            'specialties' => ['Emergency', 'General Medicine', 'Cardiology', 'Orthopedics', 'Pediatrics'],
+            'location' => ['lat' => 13.2443, 'lng' => 77.7138],
+            'distance' => '18.7 km',
             'rating' => 4.1
         ]
     ];
 }
 
-// Namakkal Region Drivers/Ambulances
+// Reva University Bangalore Drivers/Ambulances
 function getDummyDrivers() {
     $drivers = [
         [
             '_id' => 'DRV001',
             'name' => 'Aswanth Vijay',
             'phone' => '9876543214',
-            'vehicle_number' => 'TN 01 AM 1234',
+            'vehicle_number' => 'KA 01 AM 1234',
             'vehicle_type' => 'Advanced Life Support',
             'ambulance_category' => 'ALS',
             'status' => 'available',
@@ -455,7 +685,7 @@ function getDummyDrivers() {
             '_id' => 'DRV002',
             'name' => 'Karthik Selvam',
             'phone' => '9876543215',
-            'vehicle_number' => 'TN 01 AM 2345',
+            'vehicle_number' => 'KA 01 AM 2345',
             'vehicle_type' => 'Basic Life Support',
             'ambulance_category' => 'BLS',
             'status' => 'busy',
@@ -472,7 +702,7 @@ function getDummyDrivers() {
             '_id' => 'DRV003',
             'name' => 'Pradeep Kumar',
             'phone' => '9876543216',
-            'vehicle_number' => 'TN 01 AM 3456',
+            'vehicle_number' => 'KA 01 AM 3456',
             'vehicle_type' => 'Advanced Life Support',
             'ambulance_category' => 'ALS',
             'status' => 'available',
@@ -489,7 +719,7 @@ function getDummyDrivers() {
             '_id' => 'DRV004',
             'name' => 'Vignesh Raja',
             'phone' => '9876543217',
-            'vehicle_number' => 'TN 01 AM 4567',
+            'vehicle_number' => 'KA 01 AM 4567',
             'vehicle_type' => 'Basic Life Support',
             'ambulance_category' => 'BLS',
             'status' => 'available',
@@ -506,7 +736,7 @@ function getDummyDrivers() {
             '_id' => 'DRV005',
             'name' => 'Surya Narayanan',
             'phone' => '9876543218',
-            'vehicle_number' => 'TN 01 AM 5678',
+            'vehicle_number' => 'KA 01 AM 5678',
             'vehicle_type' => 'Advanced Life Support',
             'ambulance_category' => 'ALS',
             'status' => 'busy',
@@ -523,7 +753,7 @@ function getDummyDrivers() {
             '_id' => 'DRV006',
             'name' => 'Dinesh Kannan',
             'phone' => '9876543219',
-            'vehicle_number' => 'TN 01 AM 6789',
+            'vehicle_number' => 'KA 01 AM 6789',
             'vehicle_type' => 'Neonatal Ambulance',
             'ambulance_category' => 'Mobile ICU',
             'status' => 'available',
@@ -540,7 +770,7 @@ function getDummyDrivers() {
             '_id' => 'DRV007',
             'name' => 'Manoj Pandian',
             'phone' => '9876543220',
-            'vehicle_number' => 'TN 01 AM 7890',
+            'vehicle_number' => 'KA 01 AM 7890',
             'vehicle_type' => 'Basic Life Support',
             'ambulance_category' => 'BLS',
             'status' => 'offline',
@@ -557,7 +787,7 @@ function getDummyDrivers() {
             '_id' => 'DRV008',
             'name' => 'Rajesh Murugan',
             'phone' => '9876543221',
-            'vehicle_number' => 'TN 01 AM 8901',
+            'vehicle_number' => 'KA 01 AM 8901',
             'vehicle_type' => 'Advanced Life Support',
             'ambulance_category' => 'ALS',
             'status' => 'available',
@@ -574,7 +804,7 @@ function getDummyDrivers() {
             '_id' => 'DRV009',
             'name' => 'Ganesh Subramani',
             'phone' => '9876543222',
-            'vehicle_number' => 'TN 01 AM 9012',
+            'vehicle_number' => 'KA 01 AM 9012',
             'vehicle_type' => 'Cardiac Ambulance',
             'ambulance_category' => 'Mobile ICU',
             'status' => 'available',
@@ -591,7 +821,7 @@ function getDummyDrivers() {
             '_id' => 'DRV010',
             'name' => 'Senthil Nathan',
             'phone' => '9876543223',
-            'vehicle_number' => 'TN 01 AM 0123',
+            'vehicle_number' => 'KA 01 AM 0123',
             'vehicle_type' => 'Basic Life Support',
             'ambulance_category' => 'BLS',
             'status' => 'busy',
@@ -608,7 +838,7 @@ function getDummyDrivers() {
             '_id' => 'DRV011',
             'name' => 'Bala Murugan',
             'phone' => '9876543224',
-            'vehicle_number' => 'TN 01 AM 1357',
+            'vehicle_number' => 'KA 01 AM 1357',
             'vehicle_type' => 'Advanced Life Support',
             'ambulance_category' => 'ALS',
             'status' => 'available',
@@ -625,7 +855,7 @@ function getDummyDrivers() {
             '_id' => 'DRV012',
             'name' => 'Murugesan K',
             'phone' => '9876543315',
-            'vehicle_number' => 'TN 01 AM 2468',
+            'vehicle_number' => 'KA 01 AM 2468',
             'vehicle_type' => 'Basic Life Support',
             'ambulance_category' => 'BLS',
             'status' => 'available',
@@ -640,10 +870,10 @@ function getDummyDrivers() {
         ]
     ];
     
-    $namakkalZones = [
-        ['area' => 'Namakkal Bus Stand', 'lat' => 11.2194, 'lng' => 78.1678],
-        ['area' => 'Mohanur Road, Namakkal', 'lat' => 11.2147, 'lng' => 78.1734],
-        ['area' => 'Paramathi Road, Namakkal', 'lat' => 11.2108, 'lng' => 78.1810],
+    $BangaloreZones = [
+        ['area' => 'Bangalore Bus Stand', 'lat' => 13.1165, 'lng' => 77.6341],
+        ['area' => 'Mohanur Road, Bangalore', 'lat' => 11.2147, 'lng' => 78.1734],
+        ['area' => 'Paramathi Road, Bangalore', 'lat' => 11.2108, 'lng' => 78.1810],
         ['area' => 'Senthamangalam', 'lat' => 11.3010, 'lng' => 78.2264],
         ['area' => 'Tiruchengode', 'lat' => 11.3807, 'lng' => 77.8947],
         ['area' => 'Rasipuram', 'lat' => 11.4600, 'lng' => 78.1858],
@@ -656,7 +886,7 @@ function getDummyDrivers() {
     ];
 
     foreach ($drivers as $i => &$driver) {
-        $zone = $namakkalZones[$i % count($namakkalZones)];
+        $zone = $BangaloreZones[$i % count($BangaloreZones)];
         $driver['area'] = $zone['area'];
         $driver['current_location'] = ['lat' => $zone['lat'], 'lng' => $zone['lng']];
     }
@@ -665,16 +895,16 @@ function getDummyDrivers() {
     return $drivers;
 }
 
-// Active SOS Requests - All in Namakkal Region
+// Active SOS Requests - All in Reva University Bangalore
 function getDummyRequests() {
     $users = getDummyUsers();
     $drivers = getDummyDrivers();
     $hospitals = getDummyHospitals();
     
-    // Locations in Namakkal District
+    // Locations in Reva University Bangalore
     $locations = [
-        ['name' => 'Namakkal Bus Stand', 'lat' => 11.2194, 'lng' => 78.1678],
-        ['name' => 'Namakkal Railway Station', 'lat' => 11.2222, 'lng' => 78.1601],
+        ['name' => 'Bangalore Bus Stand', 'lat' => 13.1165, 'lng' => 77.6341],
+        ['name' => 'Bangalore Railway Station', 'lat' => 11.2222, 'lng' => 78.1601],
         ['name' => 'Mohanur Road', 'lat' => 11.2147, 'lng' => 78.1734],
         ['name' => 'Paramathi Road', 'lat' => 11.2108, 'lng' => 78.1810],
         ['name' => 'Senthamangalam', 'lat' => 11.3010, 'lng' => 78.2264],
@@ -727,7 +957,7 @@ function getDummyRequests() {
             'user_name' => $user['name'],
             'user_phone' => $user['phone'],
             'location' => $location,
-            'pickup_location' => $location['name'] . ', Namakkal District',
+            'pickup_location' => $location['name'] . ', Reva University Bangalore',
             'latitude' => $location['lat'],
             'longitude' => $location['lng'],
             'severity' => $severity,
@@ -759,8 +989,9 @@ function getDummyStats() {
     $drivers = getDummyDrivers();
     $hospitals = getDummyHospitals();
     $users = getDummyUsers();
+    $activeStatuses = getActiveRequestStatuses();
     
-    $activeRequests = array_filter($requests, fn($r) => in_array($r['status'], ['pending', 'accepted', 'in_progress', 'picked_up']));
+    $activeRequests = array_filter($requests, fn($r) => in_array(strtolower((string) ($r['status'] ?? 'pending')), $activeStatuses, true));
     $completedRequests = array_filter($requests, fn($r) => $r['status'] === 'completed');
     $criticalRequests = array_filter($activeRequests, fn($r) => $r['severity'] === 'critical');
     $availableDrivers = array_filter($drivers, fn($d) => $d['status'] === 'available');
@@ -778,28 +1009,98 @@ function getDummyStats() {
         'total_patients' => count(array_filter($users, fn($u) => $u['role'] === 'user')),
         'avg_response_time' => '4.2',
         'success_rate' => 98.5,
-        'region' => 'Namakkal District',
-        'center' => 'Namakkal Town Center'
+        'region' => 'Reva University Bangalore',
+        'center' => 'Reva University Bangalore'
     ];
 }
 
-// Dummy API call function (replaces Azure API)
+// API call wrapper with live Mongo bridge + dummy fallback
 function adminApiCall($endpoint) {
+    $endpoint = trim((string) $endpoint);
     $endpoint = ltrim($endpoint, '/');
-    
-    switch ($endpoint) {
+
+    $parsed = parse_url('/' . $endpoint);
+    $path = trim((string) ($parsed['path'] ?? ''), '/');
+    $query = [];
+    if (!empty($parsed['query'])) {
+        parse_str($parsed['query'], $query);
+    }
+
+    // Prefer live data via Python bridge when available.
+    $liveData = getLiveDashboardData();
+    if (is_array($liveData)) {
+        $users = is_array($liveData['users'] ?? null) ? $liveData['users'] : [];
+        $hospitals = is_array($liveData['hospitals'] ?? null) ? $liveData['hospitals'] : [];
+        $drivers = is_array($liveData['drivers'] ?? null) ? $liveData['drivers'] : [];
+        $requests = is_array($liveData['requests'] ?? null) ? $liveData['requests'] : [];
+        $stats = buildLiveStats($liveData);
+        $activeStatuses = getActiveRequestStatuses();
+
+        switch ($path) {
+            case 'stats':
+                return ['success' => true, 'source' => 'mongo-python', 'stats' => $stats, 'data' => $stats];
+
+            case 'users':
+                $filteredUsers = filterByQueryField($users, 'role', $query['role'] ?? null);
+                return ['success' => true, 'source' => 'mongo-python', 'users' => $filteredUsers, 'data' => $filteredUsers];
+
+            case 'hospitals':
+                return ['success' => true, 'source' => 'mongo-python', 'hospitals' => $hospitals, 'data' => $hospitals];
+
+            case 'drivers':
+                $filteredDrivers = filterByQueryField($drivers, 'status', $query['status'] ?? null);
+                return ['success' => true, 'source' => 'mongo-python', 'drivers' => $filteredDrivers, 'data' => $filteredDrivers];
+
+            case 'requests':
+                $statusFilter = strtolower(trim((string) ($query['status'] ?? '')));
+                if ($statusFilter === 'active') {
+                    $requests = array_values(array_filter($requests, fn($r) => in_array(strtolower((string) ($r['status'] ?? 'pending')), $activeStatuses, true)));
+                } elseif ($statusFilter !== '' && $statusFilter !== 'all') {
+                    $requests = array_values(array_filter($requests, fn($r) => strtolower((string) ($r['status'] ?? '')) === $statusFilter));
+                }
+                return ['success' => true, 'source' => 'mongo-python', 'requests' => $requests, 'data' => $requests];
+
+            case 'sos/active':
+                $activeRequests = array_values(array_filter($requests, fn($r) => in_array(strtolower((string) ($r['status'] ?? 'pending')), $activeStatuses, true)));
+                return ['success' => true, 'source' => 'mongo-python', 'requests' => $activeRequests, 'data' => $activeRequests];
+        }
+    }
+
+    // Fallback to local dummy payloads.
+    switch ($path) {
         case 'stats':
-            return ['success' => true, 'stats' => getDummyStats(), 'data' => getDummyStats()];
+            $stats = getDummyStats();
+            return ['success' => true, 'source' => 'dummy', 'stats' => $stats, 'data' => $stats];
+
         case 'users':
-            return ['success' => true, 'users' => getDummyUsers(), 'data' => getDummyUsers()];
+            $users = filterByQueryField(getDummyUsers(), 'role', $query['role'] ?? null);
+            return ['success' => true, 'source' => 'dummy', 'users' => $users, 'data' => $users];
+
         case 'hospitals':
-            return ['success' => true, 'hospitals' => getDummyHospitals(), 'data' => getDummyHospitals()];
+            $hospitals = getDummyHospitals();
+            return ['success' => true, 'source' => 'dummy', 'hospitals' => $hospitals, 'data' => $hospitals];
+
         case 'drivers':
-            return ['success' => true, 'drivers' => getDummyDrivers(), 'data' => getDummyDrivers()];
+            $drivers = filterByQueryField(getDummyDrivers(), 'status', $query['status'] ?? null);
+            return ['success' => true, 'source' => 'dummy', 'drivers' => $drivers, 'data' => $drivers];
+
         case 'requests':
-            return ['success' => true, 'requests' => getDummyRequests(), 'data' => getDummyRequests()];
+            $requests = getDummyRequests();
+            $statusFilter = strtolower(trim((string) ($query['status'] ?? '')));
+            if ($statusFilter === 'active') {
+                $requests = array_values(array_filter($requests, fn($r) => in_array(strtolower((string) ($r['status'] ?? 'pending')), getActiveRequestStatuses(), true)));
+            } elseif ($statusFilter !== '' && $statusFilter !== 'all') {
+                $requests = array_values(array_filter($requests, fn($r) => strtolower((string) ($r['status'] ?? '')) === $statusFilter));
+            }
+            return ['success' => true, 'source' => 'dummy', 'requests' => $requests, 'data' => $requests];
+
+        case 'sos/active':
+            $requests = getDummyRequests();
+            $activeRequests = array_values(array_filter($requests, fn($r) => in_array(strtolower((string) ($r['status'] ?? 'pending')), getActiveRequestStatuses(), true)));
+            return ['success' => true, 'source' => 'dummy', 'requests' => $activeRequests, 'data' => $activeRequests];
+
         default:
-            return ['success' => true, 'data' => []];
+            return ['success' => true, 'source' => 'dummy', 'data' => []];
     }
 }
 
@@ -826,3 +1127,4 @@ function timeAgo($dateStr) {
     if ($diff < 604800) return floor($diff / 86400) . ' days ago';
     return date('M d, Y', $date);
 }
+

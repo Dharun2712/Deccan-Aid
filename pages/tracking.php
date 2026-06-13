@@ -1,17 +1,25 @@
 <?php
 /**
  * Live Tracking Page - Interactive Map with Leaflet.js
- * Namakkal Region - Near Namakkal Town Center
+ * Reva University Bangalore - Near Reva University Bangalore
  * Shows: Accidents, Ambulances, Hospitals
  */
 require_once __DIR__ . '/../config.php';
 
-$drivers = getDummyDrivers();
-$hospitals = getDummyHospitals();
-$requests = getDummyRequests();
+$driversResponse = adminApiCall('/drivers');
+$hospitalsResponse = adminApiCall('/hospitals');
+$activeRequestsResponse = adminApiCall('/requests?status=active');
 
-// Get active accidents (pending/in-progress requests)
-$accidents = array_filter($requests, fn($r) => in_array($r['status'], ['pending', 'accepted', 'in_progress']));
+$drivers = $driversResponse['drivers'] ?? $driversResponse['data'] ?? [];
+$hospitals = $hospitalsResponse['hospitals'] ?? $hospitalsResponse['data'] ?? [];
+$requests = $activeRequestsResponse['requests'] ?? $activeRequestsResponse['data'] ?? [];
+$activeStatuses = getActiveRequestStatuses();
+
+// Ensure only active requests are shown on the tracking map and counters.
+$accidents = array_values(array_filter(
+  $requests,
+  fn($r) => in_array(strtolower((string) ($r['status'] ?? 'pending')), $activeStatuses, true)
+));
 
 // Prepare data for JavaScript
 $mapDrivers = array_map(function($d, $index) {
@@ -21,8 +29,8 @@ $mapDrivers = array_map(function($d, $index) {
         'vehicle' => $d['vehicle_number'] ?? '',
         'phone' => $d['phone'] ?? '',
         'status' => $d['status'] ?? 'offline',
-        'lat' => $d['current_location']['lat'] ?? (11.2194 + (rand(-50, 50) / 1000)),
-        'lng' => $d['current_location']['lng'] ?? (78.1678 + (rand(-50, 50) / 1000)),
+        'lat' => $d['current_location']['lat'] ?? (13.1165 + (rand(-50, 50) / 1000)),
+        'lng' => $d['current_location']['lng'] ?? (77.6341 + (rand(-50, 50) / 1000)),
     ];
 }, $drivers, array_keys($drivers));
 
@@ -33,25 +41,31 @@ $mapHospitals = array_map(function($h, $index) {
         'type' => $h['type'] ?? 'General',
         'address' => $h['address'] ?? '',
         'phone' => $h['phone'] ?? '',
-        'lat' => $h['location']['lat'] ?? (11.2194 + (rand(-40, 40) / 1000)),
-        'lng' => $h['location']['lng'] ?? (78.1678 + (rand(-40, 40) / 1000)),
+        'lat' => $h['location']['lat'] ?? (13.1165 + (rand(-40, 40) / 1000)),
+        'lng' => $h['location']['lng'] ?? (77.6341 + (rand(-40, 40) / 1000)),
         'beds_available' => $h['beds_available'] ?? rand(5, 30),
     ];
 }, $hospitals, array_keys($hospitals));
 
 $mapAccidents = array_map(function($a, $index) {
-    return [
-        'id' => $a['id'] ?? 'accident_' . $index,
-        'user_name' => $a['user_name'] ?? 'Unknown',
-        'emergency_type' => $a['emergency_type'] ?? 'Emergency',
-        'severity' => $a['severity'] ?? 'medium',
-        'status' => $a['status'] ?? 'pending',
-        'phone' => $a['user_phone'] ?? '',
-        'lat' => $a['location']['lat'] ?? (11.2194 + (rand(-30, 30) / 1000)),
-        'lng' => $a['location']['lng'] ?? (78.1678 + (rand(-30, 30) / 1000)),
-        'location_name' => $a['location']['name'] ?? ($a['pickup_location'] ?? 'Namakkal'),
-        'created_at' => $a['created_at'] ?? date('Y-m-d H:i:s'),
-    ];
+  $coordinates = (isset($a['location']['coordinates']) && is_array($a['location']['coordinates']))
+    ? $a['location']['coordinates']
+    : null;
+  $lat = $a['location']['lat'] ?? ($coordinates[1] ?? ($a['latitude'] ?? (13.1165 + (rand(-30, 30) / 1000))));
+  $lng = $a['location']['lng'] ?? ($coordinates[0] ?? ($a['longitude'] ?? (77.6341 + (rand(-30, 30) / 1000))));
+
+  return [
+    'id' => $a['id'] ?? ($a['_id'] ?? ('accident_' . $index)),
+    'user_name' => $a['user_name'] ?? ($a['name'] ?? 'Unknown'),
+    'emergency_type' => $a['emergency_type'] ?? ($a['condition'] ?? 'Emergency'),
+    'severity' => $a['severity'] ?? ($a['preliminary_severity'] ?? 'medium'),
+    'status' => $a['status'] ?? 'pending',
+    'phone' => $a['user_phone'] ?? ($a['user_contact'] ?? ''),
+    'lat' => $lat,
+    'lng' => $lng,
+    'location_name' => $a['location']['name'] ?? ($a['pickup_location'] ?? 'Bangalore'),
+    'created_at' => $a['created_at'] ?? ($a['timestamp'] ?? date('Y-m-d H:i:s')),
+  ];
 }, $accidents, array_keys($accidents));
 ?>
 
@@ -64,7 +78,7 @@ $mapAccidents = array_map(function($a, $index) {
         <svg class="w-4 h-4 inline-block mr-1 text-red-400" fill="currentColor" viewBox="0 0 20 20">
           <path fill-rule="evenodd" d="M5.05 4.05a7 7 0 119.9 9.9L10 18.9l-4.95-4.95a7 7 0 010-9.9zM10 11a2 2 0 100-4 2 2 0 000 4z" clip-rule="evenodd"/>
         </svg>
-        Interactive Map - Namakkal District • Town Center Area
+        Interactive Map - Reva University Bangalore • Town Center Area
       </p>
     </div>
     <div class="flex items-center gap-3">
@@ -98,7 +112,7 @@ $mapAccidents = array_map(function($a, $index) {
         </div>
         <div>
           <p class="text-slate-400 text-xs uppercase tracking-wide">Active Accidents</p>
-          <p class="text-2xl font-bold text-red-400"><?= count($accidents) ?></p>
+          <p id="trackingActiveAccidentsCount" class="text-2xl font-bold text-red-400\"><?= count($accidents) ?></p>
         </div>
       </div>
     </div>
@@ -179,13 +193,31 @@ $mapAccidents = array_map(function($a, $index) {
         <span class="w-3 h-3 bg-red-500 rounded-full animate-pulse"></span>
         Active Emergencies
       </h3>
-      <div class="space-y-3 max-h-64 overflow-y-auto custom-scrollbar">
+      <div id="trackingEmergenciesList" class="space-y-3 max-h-64 overflow-y-auto custom-scrollbar">
         <?php foreach (array_slice($mapAccidents, 0, 5) as $accident): 
           $severityColors = ['critical' => 'red', 'high' => 'amber', 'medium' => 'cyan', 'low' => 'emerald'];
           $color = $severityColors[$accident['severity']] ?? 'cyan';
+          $typeText = strtolower((string) ($accident['emergency_type'] ?? ''));
+          $alertIcon = '⚠️';
+          if (stripos($typeText, 'fire') !== false) {
+            $alertIcon = '🔥';
+          } elseif (stripos($typeText, 'manual_sos') !== false || stripos($typeText, 'manual sos') !== false) {
+            $alertIcon = '🆘';
+          } elseif (stripos($typeText, 'voice_emergency') !== false || stripos($typeText, 'voice emergency') !== false || str_starts_with($typeText, 'voice:')) {
+            $alertIcon = '🎤';
+          } elseif (stripos($typeText, 'ai image') !== false || stripos($typeText, 'image analysis') !== false || stripos($typeText, 'damage lvl') !== false || stripos($typeText, 'damage level') !== false) {
+            $alertIcon = '📷';
+          } elseif (stripos($typeText, 'auto-detected') !== false || stripos($typeText, 'auto detected') !== false || stripos($typeText, 'auto-accident') !== false || stripos($typeText, 'accident_detected') !== false || (stripos($typeText, 'vehicle accident') !== false && stripos($typeText, 'auto') !== false)) {
+            $alertIcon = '🚗';
+          } elseif (stripos($typeText, 'vehicle accident') !== false || stripos($typeText, 'accident') !== false) {
+            $alertIcon = '🚧';
+          }
         ?>
         <div class="p-3 bg-slate-800/50 rounded-lg border border-<?= $color ?>-500/30 hover:border-<?= $color ?>-500/50 transition cursor-pointer" onclick="focusMarker('accident', '<?= $accident['id'] ?>')">
           <div class="flex items-center gap-3">
+            <div class="w-8 h-8 rounded-lg bg-slate-700/60 border border-slate-600/60 flex items-center justify-center text-sm flex-shrink-0">
+              <?= $alertIcon ?>
+            </div>
             <div class="status-indicator <?= $accident['severity'] ?>"></div>
             <div class="flex-1 min-w-0">
               <p class="text-white text-sm font-medium truncate"><?= htmlspecialchars($accident['user_name']) ?></p>
@@ -380,7 +412,7 @@ const mapData = {
   drivers: <?= json_encode(array_values($mapDrivers)) ?>,
   hospitals: <?= json_encode(array_values($mapHospitals)) ?>,
   accidents: <?= json_encode(array_values($mapAccidents)) ?>,
-  center: { lat: 11.2194, lng: 78.1678 } // Namakkal Town Center
+  center: { lat: 13.1165, lng: 77.6341 } // Reva University Bangalore
 };
 
 // Marker storage for focus functionality
@@ -398,7 +430,99 @@ document.addEventListener('DOMContentLoaded', function() {
 });
 
 function initMap() {
-  // Create map centered on Namakkal Town Center
+  const escapeHtml = (value) => String(value ?? '')
+    .replace(/&/g, '&amp;')
+    .replace(/</g, '&lt;')
+    .replace(/>/g, '&gt;')
+    .replace(/\"/g, '&quot;')
+    .replace(/'/g, '&#39;');
+
+  const createMarkerHtml = (emoji, bgColor, shadow, extraClass = '') => `
+    <div class="${extraClass}" style="
+      width: 36px;
+      height: 36px;
+      background: ${bgColor};
+      border: 3px solid #fff;
+      border-radius: 50%;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      color: white;
+      font-size: 14px;
+      box-shadow: 0 0 20px ${shadow};
+    ">${emoji}</div>
+  `;
+
+  const getAccidentTypeVisual = (rawType) => {
+    const type = String(rawType || '').toLowerCase();
+
+    if (type.includes('fire')) {
+      return {
+        emoji: '🔥',
+        bgColor: 'linear-gradient(135deg, #f97316, #dc2626)',
+        shadow: 'rgba(249,115,22,0.85)'
+      };
+    }
+
+    if (type.includes('manual_sos') || type.includes('manual sos')) {
+      return {
+        emoji: '🆘',
+        bgColor: 'linear-gradient(135deg, #f59e0b, #d97706)',
+        shadow: 'rgba(245,158,11,0.75)'
+      };
+    }
+
+    if (type.includes('voice_emergency') || type.includes('voice emergency') || type.startsWith('voice:')) {
+      return {
+        emoji: '🎤',
+        bgColor: 'linear-gradient(135deg, #8b5cf6, #7c3aed)',
+        shadow: 'rgba(139,92,246,0.8)'
+      };
+    }
+
+    if (
+      type.includes('ai image') ||
+      type.includes('image analysis') ||
+      type.includes('damage lvl') ||
+      type.includes('damage level')
+    ) {
+      return {
+        emoji: '📷',
+        bgColor: 'linear-gradient(135deg, #0ea5e9, #0284c7)',
+        shadow: 'rgba(14,165,233,0.75)'
+      };
+    }
+
+    if (
+      type.includes('auto-detected') ||
+      type.includes('auto detected') ||
+      type.includes('auto-accident') ||
+      type.includes('accident_detected') ||
+      (type.includes('vehicle accident') && type.includes('auto'))
+    ) {
+      return {
+        emoji: '🚗',
+        bgColor: 'linear-gradient(135deg, #ef4444, #b91c1c)',
+        shadow: 'rgba(239,68,68,0.85)'
+      };
+    }
+
+    if (type.includes('vehicle accident') || type.includes('accident')) {
+      return {
+        emoji: '🚧',
+        bgColor: 'linear-gradient(135deg, #ef4444, #dc2626)',
+        shadow: 'rgba(239,68,68,0.7)'
+      };
+    }
+
+    return {
+      emoji: '⚠️',
+      bgColor: 'linear-gradient(135deg, #ef4444, #dc2626)',
+      shadow: 'rgba(239,68,68,0.7)'
+    };
+  };
+
+  // Create map centered on Reva University Bangalore
   map = L.map('trackingMap', {
     center: [mapData.center.lat, mapData.center.lng],
     zoom: 13,
@@ -413,8 +537,8 @@ function initMap() {
     maxZoom: 19
   }).addTo(map);
 
-  // Add Namakkal Town Center Marker
-  const kecIcon = L.divIcon({
+  // Add Reva University Bangalore Marker
+  const centerIcon = L.divIcon({
     className: 'custom-marker',
     html: '<div class="kec-marker" style="width:40px;height:40px;">📍</div>',
     iconSize: [40, 40],
@@ -422,46 +546,122 @@ function initMap() {
     popupAnchor: [0, -20]
   });
 
-  L.marker([mapData.center.lat, mapData.center.lng], { icon: kecIcon })
+  L.marker([mapData.center.lat, mapData.center.lng], { icon: centerIcon })
     .addTo(map)
     .bindPopup(`
-      <div class="popup-header" style="color:#a5b4fc;">📍 Namakkal Town Center</div>
-      <div class="popup-row"><span class="popup-label">Location:</span><span class="popup-value">Namakkal, Tamil Nadu</span></div>
-      <div class="popup-row"><span class="popup-label">Coordinates:</span><span class="popup-value">11.2194° N, 78.1678° E</span></div>
+      <div class="popup-header" style="color:#a5b4fc;">📍 Reva University Bangalore</div>
+      <div class="popup-row"><span class="popup-label">Location:</span><span class="popup-value">Bangalore, Karnataka</span></div>
+      <div class="popup-row"><span class="popup-label">Coordinates:</span><span class="popup-value">13.1165° N, 77.6341° E</span></div>
       <div class="popup-row"><span class="popup-label">Coverage:</span><span class="popup-value">15 km radius</span></div>
     `);
 
-  // Add Accident Markers
-  mapData.accidents.forEach(accident => {
-    const severityColors = {
-      critical: '#ef4444',
-      high: '#f59e0b',
-      medium: '#06b6d4',
-      low: '#10b981'
-    };
+  const buildAccidentPopup = (accident) => `
+    <div class="popup-header" style="color:#f87171;">🚨 Emergency Alert</div>
+    <div class="popup-row"><span class="popup-label">Patient:</span><span class="popup-value">${accident.user_name}</span></div>
+    <div class="popup-row"><span class="popup-label">Type:</span><span class="popup-value">${accident.emergency_type}</span></div>
+    <div class="popup-row"><span class="popup-label">Location:</span><span class="popup-value">${accident.location_name}</span></div>
+    <div class="popup-row"><span class="popup-label">Severity:</span><span class="popup-badge ${accident.severity}">${accident.severity}</span></div>
+    <div class="popup-row"><span class="popup-label">Status:</span><span class="popup-value">${accident.status}</span></div>
+    <div class="popup-row"><span class="popup-label">Contact:</span><span class="popup-value">${accident.phone}</span></div>
+  `;
 
+  const upsertAccidentMarker = (accident) => {
+    const typeVisual = getAccidentTypeVisual(accident.emergency_type);
     const accidentIcon = L.divIcon({
       className: 'custom-marker',
-      html: `<div class="accident-marker" style="width:36px;height:36px;">⚠️</div>`,
+      html: createMarkerHtml(typeVisual.emoji, typeVisual.bgColor, typeVisual.shadow, 'accident-marker'),
       iconSize: [36, 36],
       iconAnchor: [18, 18],
       popupAnchor: [0, -18]
     });
 
-    const marker = L.marker([accident.lat, accident.lng], { icon: accidentIcon })
+    const existing = markers.accident[accident.id];
+    if (existing) {
+      existing.setLatLng([accident.lat, accident.lng]);
+      existing.setIcon(accidentIcon);
+      existing.setPopupContent(buildAccidentPopup(accident));
+      return;
+    }
+
+    markers.accident[accident.id] = L.marker([accident.lat, accident.lng], { icon: accidentIcon })
       .addTo(map)
-      .bindPopup(`
-        <div class="popup-header" style="color:#f87171;">🚨 Emergency Alert</div>
-        <div class="popup-row"><span class="popup-label">Patient:</span><span class="popup-value">${accident.user_name}</span></div>
-        <div class="popup-row"><span class="popup-label">Type:</span><span class="popup-value">${accident.emergency_type}</span></div>
-        <div class="popup-row"><span class="popup-label">Location:</span><span class="popup-value">${accident.location_name}</span></div>
-        <div class="popup-row"><span class="popup-label">Severity:</span><span class="popup-badge ${accident.severity}">${accident.severity}</span></div>
-        <div class="popup-row"><span class="popup-label">Status:</span><span class="popup-value">${accident.status}</span></div>
-        <div class="popup-row"><span class="popup-label">Contact:</span><span class="popup-value">${accident.phone}</span></div>
-      `);
-    
-    markers.accident[accident.id] = marker;
-  });
+      .bindPopup(buildAccidentPopup(accident));
+  };
+
+  const normalizeRequestToAccident = (req) => {
+    const coordinates = req?.location?.coordinates;
+    let lat = req.latitude ?? req?.location?.lat;
+    let lng = req.longitude ?? req?.location?.lng;
+
+    if (Array.isArray(coordinates) && coordinates.length >= 2) {
+      lng = coordinates[0];
+      lat = coordinates[1];
+    }
+
+    if (!lat || !lng) {
+      lat = mapData.center.lat + (Math.random() - 0.5) * 0.02;
+      lng = mapData.center.lng + (Math.random() - 0.5) * 0.02;
+    }
+
+    return {
+      id: String(req._id || req.request_id || req.id || `${Date.now()}_${Math.random()}`),
+      user_name: req.user_name || req.name || 'Unknown',
+      emergency_type: req.emergency_type || req.condition || 'Emergency',
+      severity: String(req.severity || req.preliminary_severity || 'medium').toLowerCase(),
+      status: req.status || 'pending',
+      phone: req.user_phone || req.user_contact || '',
+      lat,
+      lng,
+      location_name: req?.location?.name || req.pickup_location || 'Bangalore'
+    };
+  };
+
+  const getSeverityColor = (severity) => {
+    const key = String(severity || 'medium').toLowerCase();
+    const map = { critical: 'red', high: 'amber', medium: 'cyan', low: 'emerald' };
+    return map[key] || 'cyan';
+  };
+
+  const getAlertIcon = (emergencyType) => getAccidentTypeVisual(emergencyType).emoji;
+
+  function renderEmergenciesList(accidents) {
+    const listEl = document.getElementById('trackingEmergenciesList');
+    if (!listEl) return;
+
+    if (!accidents.length) {
+      listEl.innerHTML = `
+        <div class="p-3 bg-slate-800/50 rounded-lg border border-slate-700/40 text-center">
+          <p class="text-slate-300 text-sm">No active emergencies</p>
+        </div>
+      `;
+      return;
+    }
+
+    listEl.innerHTML = accidents.slice(0, 5).map((accident) => {
+      const color = getSeverityColor(accident.severity);
+      const alertIcon = getAlertIcon(accident.emergency_type);
+      const safeId = encodeURIComponent(accident.id);
+
+      return `
+        <div class="p-3 bg-slate-800/50 rounded-lg border border-${color}-500/30 hover:border-${color}-500/50 transition cursor-pointer" onclick="focusMarker('accident', decodeURIComponent('${safeId}'))">
+          <div class="flex items-center gap-3">
+            <div class="w-8 h-8 rounded-lg bg-slate-700/60 border border-slate-600/60 flex items-center justify-center text-sm flex-shrink-0">
+              ${escapeHtml(alertIcon)}
+            </div>
+            <div class="status-indicator ${escapeHtml(String(accident.severity || 'medium').toLowerCase())}"></div>
+            <div class="flex-1 min-w-0">
+              <p class="text-white text-sm font-medium truncate">${escapeHtml(accident.user_name)}</p>
+              <p class="text-slate-500 text-xs">${escapeHtml(accident.emergency_type)}</p>
+            </div>
+            <span class="status-badge ${escapeHtml(String(accident.severity || 'medium').toLowerCase())} text-[10px]">${escapeHtml(String(accident.severity || 'medium').charAt(0).toUpperCase() + String(accident.severity || 'medium').slice(1).toLowerCase())}</span>
+          </div>
+        </div>
+      `;
+    }).join('');
+  }
+
+  // Add initial accident markers from server-rendered data.
+  mapData.accidents.forEach(upsertAccidentMarker);
 
   // Add Ambulance Markers
   mapData.drivers.forEach(driver => {
@@ -510,7 +710,7 @@ function initMap() {
     markers.hospital[hospital.id] = marker;
   });
 
-  // Add coverage circle around Namakkal center
+  // Add coverage circle around Bangalore center
   L.circle([mapData.center.lat, mapData.center.lng], {
     color: '#6366f1',
     fillColor: '#6366f1',
@@ -519,6 +719,50 @@ function initMap() {
     weight: 2,
     dashArray: '10, 10'
   }).addTo(map);
+
+  // Leaflet can mismeasure hidden containers until after paint.
+  setTimeout(() => map.invalidateSize(), 120);
+
+  function updateAccidentCount(count) {
+    const countEl = document.getElementById('trackingActiveAccidentsCount');
+    if (countEl) {
+      countEl.textContent = String(count);
+    }
+  }
+
+  function refreshLiveAccidents() {
+    fetch('api/requests.php?severity=all&status=active')
+      .then((res) => res.json())
+      .then((data) => {
+        if (!data.success || !Array.isArray(data.requests)) {
+          return;
+        }
+
+        const currentIds = new Set();
+        const normalizedAccidents = [];
+        data.requests.forEach((req) => {
+          const normalized = normalizeRequestToAccident(req);
+          currentIds.add(normalized.id);
+          normalizedAccidents.push(normalized);
+          upsertAccidentMarker(normalized);
+        });
+
+        Object.keys(markers.accident).forEach((id) => {
+          if (!currentIds.has(id)) {
+            map.removeLayer(markers.accident[id]);
+            delete markers.accident[id];
+          }
+        });
+
+        updateAccidentCount(currentIds.size);
+        renderEmergenciesList(normalizedAccidents);
+      })
+      .catch((err) => console.error('Tracking map fetch error:', err));
+  }
+
+  // Keep accident markers in sync with live SOS traffic.
+  refreshLiveAccidents();
+  setInterval(refreshLiveAccidents, 5000);
 }
 
 // Focus on specific marker
@@ -534,17 +778,14 @@ function focusMarker(type, id) {
 function resetMapView() {
   if (map) {
     map.setView([mapData.center.lat, mapData.center.lng], 13, { animate: true });
+    map.invalidateSize();
   }
 }
 
-// Simulate real-time updates (optional - moves ambulance markers slightly)
-setInterval(() => {
-  Object.keys(markers.ambulance).forEach(id => {
-    const marker = markers.ambulance[id];
-    const currentPos = marker.getLatLng();
-    const newLat = currentPos.lat + (Math.random() - 0.5) * 0.001;
-    const newLng = currentPos.lng + (Math.random() - 0.5) * 0.001;
-    marker.setLatLng([newLat, newLng]);
-  });
-}, 5000);
+window.addEventListener('resize', () => {
+  if (map) {
+    map.invalidateSize();
+  }
+});
 </script>
+

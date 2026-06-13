@@ -1,29 +1,34 @@
 <?php
 /**
  * Dashboard Page - Smart Ambulance Admin
- * Namakkal Region - Near Namakkal Town Center
+ * Reva University Bangalore - Near Reva University Bangalore
  */
 require_once __DIR__ . '/../config.php';
 
 // Fetch stats from backend
 $stats = adminApiCall('/stats');
-$activeRequests = adminApiCall('/requests');
+$activeRequests = adminApiCall('/requests?status=active');
 $drivers = adminApiCall('/drivers');
 $hospitals = adminApiCall('/hospitals');
 
 // Process stats
 $statsData = $stats['stats'] ?? $stats['data'] ?? [];
 $totalRequests = $statsData['total_requests'] ?? 0;
-$activeRequestsCount = $statsData['active_requests'] ?? 0;
 $availableDrivers = $statsData['available_drivers'] ?? 0;
 $totalHospitals = $statsData['total_hospitals'] ?? 0;
 $totalUsers = $statsData['total_users'] ?? 0;
-$criticalRequests = $statsData['critical_requests'] ?? 0;
 $avgResponseTime = $statsData['avg_response_time'] ?? '4.2';
 $successRate = $statsData['success_rate'] ?? 98.5;
+$activeStatuses = getActiveRequestStatuses();
 
-// Get recent requests (limit 5)
-$allRequests = $activeRequests['requests'] ?? $activeRequests['data'] ?? [];
+// Get active requests (limit 5 in table)
+$allRequestsRaw = $activeRequests['requests'] ?? $activeRequests['data'] ?? [];
+$allRequests = array_values(array_filter(
+  $allRequestsRaw,
+  fn($r) => in_array(strtolower((string) ($r['status'] ?? 'pending')), $activeStatuses, true)
+));
+$activeRequestsCount = (int) ($statsData['active_requests'] ?? count($allRequests));
+$criticalRequests = count(array_filter($allRequests, fn($r) => strtolower((string) ($r['severity'] ?? 'medium')) === 'critical'));
 $recentRequests = array_slice($allRequests, 0, 5);
 
 // Get driver list
@@ -44,7 +49,7 @@ $hospitalList = $hospitals['hospitals'] ?? $hospitals['data'] ?? [];
         <svg class="w-4 h-4 inline-block mr-1 text-red-400" fill="currentColor" viewBox="0 0 20 20">
           <path fill-rule="evenodd" d="M5.05 4.05a7 7 0 119.9 9.9L10 18.9l-4.95-4.95a7 7 0 010-9.9zM10 11a2 2 0 100-4 2 2 0 000 4z" clip-rule="evenodd"/>
         </svg>
-        Namakkal District • Near Namakkal Town Center
+        Reva University Bangalore • Near Reva University Bangalore
       </p>
     </div>
     <div class="flex items-center gap-3">
@@ -59,20 +64,18 @@ $hospitalList = $hospitals['hospitals'] ?? $hospitals['data'] ?? [];
   </div>
 
   <!-- Critical Alert Banner -->
-  <?php if ($criticalRequests > 0): ?>
-  <div class="bg-gradient-to-r from-red-500/20 to-orange-500/20 border border-red-500/50 rounded-xl p-4 flex items-center gap-4 animate-pulse">
+  <div id="dashboardCriticalBanner" class="bg-gradient-to-r from-red-500/20 to-orange-500/20 border border-red-500/50 rounded-xl p-4 flex items-center gap-4 animate-pulse <?= $criticalRequests > 0 ? '' : 'hidden' ?>">
     <div class="p-2 bg-red-500/30 rounded-lg">
       <svg class="w-6 h-6 text-red-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
         <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-3L13.732 4c-.77-1.333-2.694-1.333-3.464 0L3.34 16c-.77 1.333.192 3 1.732 3z"/>
       </svg>
     </div>
     <div class="flex-1">
-      <h4 class="text-red-400 font-semibold"><?= $criticalRequests ?> Critical Emergency Alert<?= $criticalRequests > 1 ? 's' : '' ?>!</h4>
-      <p class="text-red-300/70 text-sm">Immediate attention required in Namakkal region</p>
+      <h4 id="dashboardCriticalBannerTitle" class="text-red-400 font-semibold"><?= $criticalRequests ?> Critical Emergency Alert<?= $criticalRequests > 1 ? 's' : '' ?>!</h4>
+      <p class="text-red-300/70 text-sm">Immediate attention required in Reva University Bangalore</p>
     </div>
     <a href="?page=requests" class="btn-primary bg-red-500 hover:bg-red-600">View Now</a>
   </div>
-  <?php endif; ?>
 
   <!-- Stats Cards - Row 1 -->
   <div class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-5">
@@ -100,7 +103,7 @@ $hospitalList = $hospitals['hospitals'] ?? $hospitals['data'] ?? [];
       <div class="flex items-start justify-between">
         <div>
           <p class="text-slate-400 text-sm font-medium">Active Requests</p>
-          <p class="text-3xl font-bold text-white mt-2"><?= number_format($activeRequestsCount) ?></p>
+          <p id="dashboardActiveRequestsCount" class="text-3xl font-bold text-white mt-2"><?= number_format($activeRequestsCount) ?></p>
           <p class="text-xs text-amber-400 mt-2 flex items-center gap-1">
             <span class="status-indicator pending inline-block mr-1"></span>
             In progress
@@ -163,7 +166,7 @@ $hospitalList = $hospitals['hospitals'] ?? $hospitals['data'] ?? [];
           <p class="text-3xl font-bold text-white mt-2"><?= number_format($totalUsers) ?></p>
           <p class="text-xs text-purple-400 mt-2 flex items-center gap-1">
             <svg class="w-3 h-3" fill="currentColor" viewBox="0 0 20 20"><path d="M13 6a3 3 0 11-6 0 3 3 0 016 0zM18 8a2 2 0 11-4 0 2 2 0 014 0zM14 15a4 4 0 00-8 0v3h8v-3zM6 8a2 2 0 11-4 0 2 2 0 014 0zM16 18v-3a5.972 5.972 0 00-.75-2.906A3.005 3.005 0 0119 15v3h-3zM4.75 12.094A5.973 5.973 0 004 15v3H1v-3a3 3 0 013.75-2.906z"/></svg>
-            Namakkal Region
+            Reva University Bangalore
           </p>
         </div>
         <div class="p-3 bg-gradient-to-br from-purple-500/20 to-pink-500/20 rounded-xl">
@@ -217,7 +220,7 @@ $hospitalList = $hospitals['hospitals'] ?? $hospitals['data'] ?? [];
       <div class="flex items-start justify-between">
         <div>
           <p class="text-slate-400 text-sm font-medium">Critical Cases</p>
-          <p class="text-3xl font-bold text-white mt-2"><?= number_format($criticalRequests) ?></p>
+          <p id="dashboardCriticalCasesCount" class="text-3xl font-bold text-white mt-2"><?= number_format($criticalRequests) ?></p>
           <p class="text-xs text-red-400 mt-2 flex items-center gap-1">
             <span class="status-indicator critical inline-block mr-1"></span>
             Needs attention
@@ -239,7 +242,7 @@ $hospitalList = $hospitals['hospitals'] ?? $hospitals['data'] ?? [];
       <div class="flex items-center justify-between mb-6">
         <div>
           <h3 class="text-lg font-semibold text-white">Request Trends</h3>
-          <p class="text-sm text-slate-400">Weekly overview - Namakkal Region</p>
+          <p class="text-sm text-slate-400">Weekly overview - Reva University Bangalore</p>
         </div>
         <div class="flex gap-2">
           <button class="px-3 py-1.5 text-xs font-medium bg-indigo-500/20 text-indigo-400 rounded-lg">Week</button>
@@ -272,7 +275,7 @@ $hospitalList = $hospitals['hospitals'] ?? $hospitals['data'] ?? [];
       <div class="flex items-center justify-between p-4 border-b border-slate-700/50">
         <div>
           <h3 class="text-lg font-semibold text-white">Live Ambulance Tracking</h3>
-          <p class="text-sm text-slate-400">Interactive map - Namakkal District</p>
+          <p class="text-sm text-slate-400">Interactive map - Reva University Bangalore</p>
         </div>
         <div class="flex items-center gap-3">
           <span class="flex items-center gap-2 px-3 py-1.5 bg-emerald-500/20 text-emerald-400 rounded-lg text-xs font-medium">
@@ -301,7 +304,7 @@ $hospitalList = $hospitals['hospitals'] ?? $hospitals['data'] ?? [];
             Hospitals
           </div>
         </div>
-        <span class="text-slate-500">Centered: Namakkal Town Center</span>
+        <span class="text-slate-500">Centered: Reva University Bangalore</span>
       </div>
     </div>
 
@@ -323,7 +326,7 @@ $hospitalList = $hospitals['hospitals'] ?? $hospitals['data'] ?? [];
           </div>
           <div class="flex-1 min-w-0">
             <p class="text-white text-sm font-medium truncate"><?= htmlspecialchars($driver['name']) ?></p>
-            <p class="text-slate-400 text-xs truncate"><?= htmlspecialchars($driver['area'] ?? 'Namakkal') ?></p>
+            <p class="text-slate-400 text-xs truncate"><?= htmlspecialchars($driver['area'] ?? 'Bangalore') ?></p>
           </div>
           <span class="status-badge <?= $driver['status'] ?> text-xs">
             <?= ucfirst($driver['status']) ?>
@@ -341,7 +344,7 @@ $hospitalList = $hospitals['hospitals'] ?? $hospitals['data'] ?? [];
       <div class="flex items-center justify-between mb-6">
         <div>
           <h3 class="text-lg font-semibold text-white">Active Requests</h3>
-          <p class="text-sm text-slate-400">Real-time SOS monitoring - Namakkal Region</p>
+          <p class="text-sm text-slate-400">Real-time SOS monitoring - Reva University Bangalore</p>
         </div>
         <a href="?page=requests" class="text-sm text-indigo-400 hover:text-indigo-300 flex items-center gap-1">
           View All
@@ -351,66 +354,68 @@ $hospitalList = $hospitals['hospitals'] ?? $hospitals['data'] ?? [];
         </a>
       </div>
       
-      <?php if (empty($recentRequests)): ?>
-      <div class="empty-state py-8">
-        <svg fill="none" stroke="currentColor" viewBox="0 0 24 24">
-          <path stroke-linecap="round" stroke-linejoin="round" stroke-width="1.5" d="M9 5H7a2 2 0 00-2 2v12a2 2 0 002 2h10a2 2 0 002-2V7a2 2 0 00-2-2h-2M9 5a2 2 0 002 2h2a2 2 0 002-2M9 5a2 2 0 012-2h2a2 2 0 012 2" />
-        </svg>
-        <h3>No Active Requests</h3>
-        <p>All SOS requests have been handled</p>
-      </div>
-      <?php else: ?>
-      <div class="overflow-x-auto">
-        <table class="data-table">
-          <thead>
-            <tr>
-              <th>Request ID</th>
-              <th>User</th>
-              <th>Location</th>
-              <th>Severity</th>
-              <th>Status</th>
-              <th>Time</th>
-              <th></th>
-            </tr>
-          </thead>
-          <tbody>
-            <?php foreach ($recentRequests as $request): ?>
-            <tr>
-              <td class="font-mono text-xs text-slate-300">#<?= substr($request['request_id'] ?? $request['_id'] ?? 'N/A', -6) ?></td>
-              <td>
-                <div class="flex items-center gap-2">
-                  <div class="w-8 h-8 rounded-full bg-gradient-to-br from-indigo-500 to-purple-500 flex items-center justify-center text-white text-xs font-bold">
-                    <?= strtoupper(substr($request['user_name'] ?? 'U', 0, 1)) ?>
+      <div id="dashboardActiveRequestsContainer">
+        <?php if (empty($recentRequests)): ?>
+        <div class="empty-state py-8">
+          <svg fill="none" stroke="currentColor" viewBox="0 0 24 24">
+            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="1.5" d="M9 5H7a2 2 0 00-2 2v12a2 2 0 002 2h10a2 2 0 002-2V7a2 2 0 00-2-2h-2M9 5a2 2 0 002 2h2a2 2 0 002-2M9 5a2 2 0 012-2h2a2 2 0 012 2" />
+          </svg>
+          <h3>No Active Requests</h3>
+          <p>All SOS requests have been handled</p>
+        </div>
+        <?php else: ?>
+        <div class="overflow-x-auto">
+          <table class="data-table">
+            <thead>
+              <tr>
+                <th>Request ID</th>
+                <th>User</th>
+                <th>Location</th>
+                <th>Severity</th>
+                <th>Status</th>
+                <th>Time</th>
+                <th></th>
+              </tr>
+            </thead>
+            <tbody>
+              <?php foreach ($recentRequests as $request): ?>
+              <tr>
+                <td class="font-mono text-xs text-slate-300">#<?= substr($request['request_id'] ?? $request['_id'] ?? 'N/A', -6) ?></td>
+                <td>
+                  <div class="flex items-center gap-2">
+                    <div class="w-8 h-8 rounded-full bg-gradient-to-br from-indigo-500 to-purple-500 flex items-center justify-center text-white text-xs font-bold">
+                      <?= strtoupper(substr($request['user_name'] ?? 'U', 0, 1)) ?>
+                    </div>
+                    <span class="text-white text-sm"><?= htmlspecialchars($request['user_name'] ?? 'Unknown') ?></span>
                   </div>
-                  <span class="text-white text-sm"><?= htmlspecialchars($request['user_name'] ?? 'Unknown') ?></span>
-                </div>
-              </td>
-              <td class="text-slate-400 text-xs max-w-32 truncate"><?= htmlspecialchars($request['location']['name'] ?? $request['pickup_location'] ?? 'Namakkal') ?></td>
-              <td>
-                <span class="status-badge <?= strtolower($request['severity'] ?? 'medium') ?>">
-                  <?= ucfirst($request['severity'] ?? 'Medium') ?>
-                </span>
-              </td>
-              <td>
-                <span class="status-badge <?= strtolower(str_replace(' ', '-', $request['status'] ?? 'pending')) ?>">
-                  <?= ucfirst($request['status'] ?? 'Pending') ?>
-                </span>
-              </td>
-              <td class="text-slate-400 text-sm"><?= timeAgo($request['created_at'] ?? null) ?></td>
-              <td>
-                <button class="text-slate-400 hover:text-white p-1">
-                  <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 12a3 3 0 11-6 0 3 3 0 016 0z" />
-                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M2.458 12C3.732 7.943 7.523 5 12 5c4.478 0 8.268 2.943 9.542 7-1.274 4.057-5.064 7-9.542 7-4.477 0-8.268-2.943-9.542-7z" />
-                  </svg>
-                </button>
-              </td>
-            </tr>
-            <?php endforeach; ?>
-          </tbody>
-        </table>
+                </td>
+                <td class="text-slate-400 text-xs max-w-32 truncate"><?= htmlspecialchars($request['location']['name'] ?? $request['pickup_location'] ?? 'Bangalore') ?></td>
+                <td>
+                  <span class="status-badge <?= strtolower($request['severity'] ?? 'medium') ?>">
+                    <?= ucfirst($request['severity'] ?? 'Medium') ?>
+                  </span>
+                </td>
+                <td>
+                  <span class="status-badge <?= strtolower(str_replace(' ', '-', $request['status'] ?? 'pending')) ?>">
+                    <?= ucfirst($request['status'] ?? 'Pending') ?>
+                  </span>
+                </td>
+                <td class="text-slate-400 text-sm"><?= timeAgo($request['created_at'] ?? null) ?></td>
+                <td>
+                  <button class="text-slate-400 hover:text-white p-1">
+                    <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                      <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 12a3 3 0 11-6 0 3 3 0 016 0z" />
+                      <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M2.458 12C3.732 7.943 7.523 5 12 5c4.478 0 8.268 2.943 9.542 7-1.274 4.057-5.064 7-9.542 7-4.477 0-8.268-2.943-9.542-7z" />
+                    </svg>
+                  </button>
+                </td>
+              </tr>
+              <?php endforeach; ?>
+            </tbody>
+          </table>
+        </div>
+        <?php endif; ?>
       </div>
-      <?php endif; ?>
     </div>
 
     <!-- System Status -->
@@ -493,7 +498,7 @@ $hospitalList = $hospitals['hospitals'] ?? $hospitals['data'] ?? [];
       <div class="flex items-center justify-between mb-6">
         <div>
           <h3 class="text-lg font-semibold text-white">Nearby Hospitals</h3>
-          <p class="text-sm text-slate-400">Namakkal Region Network</p>
+          <p class="text-sm text-slate-400">Reva University Bangalore Network</p>
         </div>
         <a href="?page=hospitals" class="text-sm text-indigo-400 hover:text-indigo-300">View All</a>
       </div>
@@ -567,7 +572,7 @@ $hospitalList = $hospitals['hospitals'] ?? $hospitals['data'] ?? [];
     <div class="flex items-center justify-between mb-6">
       <div>
         <h3 class="text-lg font-semibold text-white">Recent Activity</h3>
-        <p class="text-sm text-slate-400">Latest system events - Namakkal Region</p>
+        <p class="text-sm text-slate-400">Latest system events - Reva University Bangalore</p>
       </div>
     </div>
     
@@ -580,7 +585,7 @@ $hospitalList = $hospitals['hospitals'] ?? $hospitals['data'] ?? [];
         </div>
         <div class="flex-1 min-w-0">
           <p class="text-white text-sm font-medium">Request Completed</p>
-          <p class="text-slate-400 text-xs truncate">Dharun Prasad delivered to Government Medical College Hospital, Namakkal</p>
+          <p class="text-slate-400 text-xs truncate">Dharun Prasad delivered to Government Medical College Hospital, Bangalore</p>
           <p class="text-slate-500 text-xs mt-1">2 min ago</p>
         </div>
       </div>
@@ -604,7 +609,7 @@ $hospitalList = $hospitals['hospitals'] ?? $hospitals['data'] ?? [];
         </div>
         <div class="flex-1 min-w-0">
           <p class="text-white text-sm font-medium">Critical Alert</p>
-          <p class="text-slate-400 text-xs truncate">Emergency near Namakkal Bus Stand</p>
+          <p class="text-slate-400 text-xs truncate">Emergency near Bangalore Bus Stand</p>
           <p class="text-slate-500 text-xs mt-1">8 min ago</p>
         </div>
       </div>
@@ -626,6 +631,162 @@ $hospitalList = $hospitals['hospitals'] ?? $hospitals['data'] ?? [];
 
 <script>
 document.addEventListener('DOMContentLoaded', function() {
+  const escapeHtml = (value) => String(value ?? '')
+    .replace(/&/g, '&amp;')
+    .replace(/</g, '&lt;')
+    .replace(/>/g, '&gt;')
+    .replace(/\"/g, '&quot;')
+    .replace(/'/g, '&#39;');
+
+  const statusClass = (value) => String(value ?? 'pending').toLowerCase().replace(/\s+/g, '-');
+
+  const formatTimeAgo = (input) => {
+    if (!input) {
+      return 'just now';
+    }
+
+    const parsed = new Date(input);
+    if (Number.isNaN(parsed.getTime())) {
+      return 'just now';
+    }
+
+    const diffSeconds = Math.max(0, Math.floor((Date.now() - parsed.getTime()) / 1000));
+    if (diffSeconds < 60) return `${diffSeconds}s ago`;
+
+    const diffMinutes = Math.floor(diffSeconds / 60);
+    if (diffMinutes < 60) return `${diffMinutes} min ago`;
+
+    const diffHours = Math.floor(diffMinutes / 60);
+    if (diffHours < 24) return `${diffHours} hr ago`;
+
+    const diffDays = Math.floor(diffHours / 24);
+    return `${diffDays} day${diffDays > 1 ? 's' : ''} ago`;
+  };
+
+  function renderDashboardRequests(requests) {
+    const container = document.getElementById('dashboardActiveRequestsContainer');
+    if (!container) return;
+
+    if (!requests.length) {
+      container.innerHTML = `
+        <div class="empty-state py-8">
+          <svg fill="none" stroke="currentColor" viewBox="0 0 24 24">
+            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="1.5" d="M9 5H7a2 2 0 00-2 2v12a2 2 0 002 2h10a2 2 0 002-2V7a2 2 0 00-2-2h-2M9 5a2 2 0 002 2h2a2 2 0 002-2M9 5a2 2 0 012-2h2a2 2 0 012 2" />
+          </svg>
+          <h3>No Active Requests</h3>
+          <p>All SOS requests have been handled</p>
+        </div>
+      `;
+      return;
+    }
+
+    const rows = requests.slice(0, 5).map((request) => {
+      const requestId = String(request.request_id || request._id || request.id || 'N/A');
+      const shortId = requestId.slice(-6);
+      const userName = String(request.user_name || request.name || 'Unknown');
+      const initial = userName.charAt(0).toUpperCase() || 'U';
+      const locationName = String(request?.location?.name || request.pickup_location || 'Bangalore');
+      const severity = String(request.severity || request.preliminary_severity || 'medium').toLowerCase();
+      const status = String(request.status || 'pending');
+
+      return `
+        <tr>
+          <td class="font-mono text-xs text-slate-300">#${escapeHtml(shortId)}</td>
+          <td>
+            <div class="flex items-center gap-2">
+              <div class="w-8 h-8 rounded-full bg-gradient-to-br from-indigo-500 to-purple-500 flex items-center justify-center text-white text-xs font-bold">
+                ${escapeHtml(initial)}
+              </div>
+              <span class="text-white text-sm">${escapeHtml(userName)}</span>
+            </div>
+          </td>
+          <td class="text-slate-400 text-xs max-w-32 truncate">${escapeHtml(locationName)}</td>
+          <td>
+            <span class="status-badge ${escapeHtml(statusClass(severity))}">${escapeHtml(severity.charAt(0).toUpperCase() + severity.slice(1))}</span>
+          </td>
+          <td>
+            <span class="status-badge ${escapeHtml(statusClass(status))}">${escapeHtml(status.charAt(0).toUpperCase() + status.slice(1))}</span>
+          </td>
+          <td class="text-slate-400 text-sm">${escapeHtml(formatTimeAgo(request.created_at || request.timestamp || null))}</td>
+          <td>
+            <button class="text-slate-400 hover:text-white p-1">
+              <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 12a3 3 0 11-6 0 3 3 0 016 0z" />
+                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M2.458 12C3.732 7.943 7.523 5 12 5c4.478 0 8.268 2.943 9.542 7-1.274 4.057-5.064 7-9.542 7-4.477 0-8.268-2.943-9.542-7z" />
+              </svg>
+            </button>
+          </td>
+        </tr>
+      `;
+    }).join('');
+
+    container.innerHTML = `
+      <div class="overflow-x-auto">
+        <table class="data-table">
+          <thead>
+            <tr>
+              <th>Request ID</th>
+              <th>User</th>
+              <th>Location</th>
+              <th>Severity</th>
+              <th>Status</th>
+              <th>Time</th>
+              <th></th>
+            </tr>
+          </thead>
+          <tbody>
+            ${rows}
+          </tbody>
+        </table>
+      </div>
+    `;
+  }
+
+  function updateDashboardLiveCounts(requests) {
+    const activeCount = requests.length;
+    const criticalCount = requests.filter((r) => String(r.severity || r.preliminary_severity || 'medium').toLowerCase() === 'critical').length;
+
+    const activeEl = document.getElementById('dashboardActiveRequestsCount');
+    if (activeEl) {
+      activeEl.textContent = activeCount.toLocaleString();
+    }
+
+    const criticalEl = document.getElementById('dashboardCriticalCasesCount');
+    if (criticalEl) {
+      criticalEl.textContent = criticalCount.toLocaleString();
+    }
+
+    const banner = document.getElementById('dashboardCriticalBanner');
+    const bannerTitle = document.getElementById('dashboardCriticalBannerTitle');
+    if (banner && bannerTitle) {
+      if (criticalCount > 0) {
+        banner.classList.remove('hidden');
+        bannerTitle.textContent = `${criticalCount} Critical Emergency Alert${criticalCount > 1 ? 's' : ''}!`;
+      } else {
+        banner.classList.add('hidden');
+      }
+    }
+  }
+
+  function refreshDashboardRequests() {
+    fetch('api/requests.php?severity=all&status=active')
+      .then((res) => res.json())
+      .then((data) => {
+        if (!data.success || !Array.isArray(data.requests)) {
+          return;
+        }
+
+        updateDashboardLiveCounts(data.requests);
+        renderDashboardRequests(data.requests);
+
+        const lastUpdate = document.getElementById('lastUpdate');
+        if (lastUpdate) {
+          lastUpdate.textContent = new Date().toLocaleTimeString('en-GB', { hour12: false });
+        }
+      })
+      .catch((err) => console.error('Dashboard request refresh error:', err));
+  }
+
   const requestsCtx = document.getElementById('requestsChart');
   if (requestsCtx) {
     new Chart(requestsCtx, {
@@ -696,6 +857,10 @@ document.addEventListener('DOMContentLoaded', function() {
 
   // Initialize Dashboard Leaflet Map
   initDashboardMap();
+
+  // Keep active request counters/list fresh without reloading the page.
+  refreshDashboardRequests();
+  setInterval(refreshDashboardRequests, 5000);
 });
 
 // Dashboard Map Initialization
@@ -703,9 +868,32 @@ function initDashboardMap() {
   const mapContainer = document.getElementById('dashboardMap');
   if (!mapContainer) return;
 
-  // Center coordinates: Namakkal Town Center
-  const centerLat = 11.2194;
-  const centerLng = 78.1678;
+  // Inject marker animation styles once for live SOS markers.
+  if (!document.getElementById('dashboard-sos-marker-style')) {
+    const styleEl = document.createElement('style');
+    styleEl.id = 'dashboard-sos-marker-style';
+    styleEl.textContent = `
+      @keyframes dashboardSosPulse {
+        0%, 100% {
+          transform: scale(1);
+          box-shadow: 0 0 10px rgba(239,68,68,0.5);
+        }
+        50% {
+          transform: scale(1.14);
+          box-shadow: 0 0 22px rgba(239,68,68,0.95);
+        }
+      }
+      .dashboard-sos-marker {
+        animation: dashboardSosPulse 1.1s ease-in-out infinite;
+        will-change: transform, box-shadow;
+      }
+    `;
+    document.head.appendChild(styleEl);
+  }
+
+  // Center coordinates: Reva University, Bangalore
+  const centerLat = 13.1165;
+  const centerLng = 77.6341;
 
   // Create map
   const dashMap = L.map('dashboardMap', {
@@ -722,30 +910,9 @@ function initDashboardMap() {
     maxZoom: 19
   }).addTo(dashMap);
 
-  // Dummy data for map markers
-  const accidents = [
-    { lat: centerLat + 0.015, lng: centerLng - 0.012, name: 'Arun Kumar', type: 'Road Accident', severity: 'critical' },
-    { lat: centerLat - 0.008, lng: centerLng + 0.018, name: 'Sanjeev Rajan', type: 'Heart Attack', severity: 'critical' },
-    { lat: centerLat + 0.022, lng: centerLng + 0.008, name: 'Dharun Prasad', type: 'Fall Injury', severity: 'high' },
-    { lat: centerLat - 0.018, lng: centerLng - 0.015, name: 'Kishore Balaji', type: 'Breathing Issue', severity: 'medium' },
-  ];
-
-  const ambulances = [
-    { lat: centerLat + 0.008, lng: centerLng - 0.005, name: 'Aswanth Vijay', vehicle: 'TN 33 AB 1234', status: 'available' },
-    { lat: centerLat - 0.012, lng: centerLng + 0.010, name: 'Karthik Selvam', vehicle: 'TN 33 CD 5678', status: 'busy' },
-    { lat: centerLat + 0.005, lng: centerLng + 0.020, name: 'Pradeep Kumar', vehicle: 'TN 33 EF 9012', status: 'available' },
-    { lat: centerLat - 0.020, lng: centerLng - 0.008, name: 'Vignesh Raja', vehicle: 'TN 33 GH 3456', status: 'busy' },
-  ];
-
-  const hospitals = [
-    { lat: centerLat + 0.025, lng: centerLng + 0.015, name: 'Maruthi Hospital', beds: 25 },
-    { lat: centerLat - 0.015, lng: centerLng - 0.025, name: 'M.M. Hospital', beds: 18 },
-    { lat: centerLat - 0.028, lng: centerLng + 0.022, name: 'CM Speciality Hospital (CM Best)', beds: 32 },
-  ];
-
   // Custom marker styles
-  const createMarkerHtml = (emoji, bgColor, shadow) => `
-    <div style="
+  const createMarkerHtml = (emoji, bgColor, shadow, extraClass = '') => `
+    <div class="${extraClass}" style="
       width: 32px; height: 32px;
       background: ${bgColor};
       border: 2px solid white;
@@ -758,49 +925,77 @@ function initDashboardMap() {
     ">${emoji}</div>
   `;
 
-  // Add accident markers
-  accidents.forEach(a => {
-    const icon = L.divIcon({
-      className: 'custom-marker',
-      html: createMarkerHtml('⚠️', 'linear-gradient(135deg, #ef4444, #dc2626)', 'rgba(239,68,68,0.5)'),
-      iconSize: [32, 32],
-      iconAnchor: [16, 16]
-    });
-    L.marker([a.lat, a.lng], { icon })
-      .addTo(dashMap)
-      .bindPopup(`<div style="color:#f87171;font-weight:600;">🚨 ${a.type}</div><div style="color:#e2e8f0;">${a.name}</div><div style="color:#94a3b8;font-size:11px;">Severity: ${a.severity}</div>`);
-  });
+  const getAccidentTypeVisual = (rawType) => {
+    const type = String(rawType || '').toLowerCase();
 
-  // Add ambulance markers
-  ambulances.forEach(a => {
-    const bgColor = a.status === 'available' ? 'linear-gradient(135deg, #10b981, #059669)' : 'linear-gradient(135deg, #f59e0b, #d97706)';
-    const shadow = a.status === 'available' ? 'rgba(16,185,129,0.5)' : 'rgba(245,158,11,0.5)';
-    const icon = L.divIcon({
-      className: 'custom-marker',
-      html: createMarkerHtml('🚑', bgColor, shadow),
-      iconSize: [32, 32],
-      iconAnchor: [16, 16]
-    });
-    L.marker([a.lat, a.lng], { icon })
-      .addTo(dashMap)
-      .bindPopup(`<div style="color:#22d3ee;font-weight:600;">🚑 ${a.name}</div><div style="color:#e2e8f0;">${a.vehicle}</div><div style="color:#94a3b8;font-size:11px;">Status: ${a.status}</div>`);
-  });
+    if (type.includes('fire')) {
+      return {
+        emoji: '🔥',
+        bgColor: 'linear-gradient(135deg, #f97316, #dc2626)',
+        shadow: 'rgba(249,115,22,0.8)'
+      };
+    }
 
-  // Add hospital markers
-  hospitals.forEach(h => {
-    const icon = L.divIcon({
-      className: 'custom-marker',
-      html: createMarkerHtml('🏥', 'linear-gradient(135deg, #10b981, #059669)', 'rgba(16,185,129,0.5)'),
-      iconSize: [32, 32],
-      iconAnchor: [16, 16]
-    });
-    L.marker([h.lat, h.lng], { icon })
-      .addTo(dashMap)
-      .bindPopup(`<div style="color:#34d399;font-weight:600;">🏥 ${h.name}</div><div style="color:#94a3b8;font-size:11px;">Beds: ${h.beds} available</div>`);
-  });
+    if (type.includes('manual_sos') || type.includes('manual sos')) {
+      return {
+        emoji: '🆘',
+        bgColor: 'linear-gradient(135deg, #f59e0b, #d97706)',
+        shadow: 'rgba(245,158,11,0.7)'
+      };
+    }
 
-  // Add Namakkal center marker
-  const kecIcon = L.divIcon({
+    if (type.includes('voice_emergency') || type.includes('voice emergency') || type.startsWith('voice:')) {
+      return {
+        emoji: '🎤',
+        bgColor: 'linear-gradient(135deg, #8b5cf6, #7c3aed)',
+        shadow: 'rgba(139,92,246,0.75)'
+      };
+    }
+
+    if (
+      type.includes('ai image') ||
+      type.includes('image analysis') ||
+      type.includes('damage lvl') ||
+      type.includes('damage level')
+    ) {
+      return {
+        emoji: '📷',
+        bgColor: 'linear-gradient(135deg, #0ea5e9, #0284c7)',
+        shadow: 'rgba(14,165,233,0.75)'
+      };
+    }
+
+    if (
+      type.includes('auto-detected') ||
+      type.includes('auto detected') ||
+      type.includes('auto-accident') ||
+      type.includes('accident_detected') ||
+      (type.includes('vehicle accident') && type.includes('auto'))
+    ) {
+      return {
+        emoji: '🚗',
+        bgColor: 'linear-gradient(135deg, #ef4444, #b91c1c)',
+        shadow: 'rgba(239,68,68,0.8)'
+      };
+    }
+
+    if (type.includes('vehicle accident') || type.includes('accident')) {
+      return {
+        emoji: '🚧',
+        bgColor: 'linear-gradient(135deg, #ef4444, #dc2626)',
+        shadow: 'rgba(239,68,68,0.65)'
+      };
+    }
+
+    return {
+      emoji: '⚠️',
+      bgColor: 'linear-gradient(135deg, #ef4444, #dc2626)',
+      shadow: 'rgba(239,68,68,0.65)'
+    };
+  };
+
+  // Add Bangalore center marker -> Changed to Reva University
+  const centerIcon = L.divIcon({
     className: 'custom-marker',
     html: `<div style="
       width: 36px; height: 36px;
@@ -816,9 +1011,9 @@ function initDashboardMap() {
     iconSize: [36, 36],
     iconAnchor: [18, 18]
   });
-  L.marker([centerLat, centerLng], { icon: kecIcon })
+  L.marker([centerLat, centerLng], { icon: centerIcon })
     .addTo(dashMap)
-    .bindPopup('<div style="color:#a5b4fc;font-weight:600;">📍 Namakkal Town Center</div><div style="color:#94a3b8;font-size:11px;">11.2194° N, 78.1678° E</div>');
+    .bindPopup('<div style="color:#a5b4fc;font-weight:600;">📍 Reva University Bangalore</div><div style="color:#94a3b8;font-size:11px;">13.1165° N, 77.6341° E</div>');
 
   // Add coverage circle
   L.circle([centerLat, centerLng], {
@@ -829,5 +1024,70 @@ function initDashboardMap() {
     weight: 1,
     dashArray: '5, 5'
   }).addTo(dashMap);
+
+  // Live SOS Requests Polling
+  let mapMarkers = {};
+  
+  function updateMapSOS() {
+    fetch('api/requests.php?severity=all&status=active')
+      .then(res => res.json())
+      .then(data => {
+        if (!data.success || !data.requests) return;
+        
+        let currentIds = new Set();
+        
+        data.requests.forEach(req => {
+          let reqId = req._id || req.request_id || req.id;
+          if (!reqId) return;
+          currentIds.add(reqId);
+          
+          if (!mapMarkers[reqId]) {
+            let lat = req.latitude || (req.location && req.location.lat);
+            let lng = req.longitude || (req.location && req.location.lng);
+            if (req.location && req.location.coordinates) {
+              lng = req.location.coordinates[0];
+              lat = req.location.coordinates[1];
+            }
+            // fallback to near center if no coordinates
+            if (!lat || !lng) {
+                lat = centerLat + (Math.random() - 0.5) * 0.02;
+                lng = centerLng + (Math.random() - 0.5) * 0.02;
+            }
+
+            let name = req.user_name || req.name || 'Unknown';
+            let type = req.emergency_type || req.condition || 'Emergency';
+            let severity = req.severity || req.preliminary_severity || 'high';
+            const typeVisual = getAccidentTypeVisual(type);
+
+            let icon = L.divIcon({
+              className: 'custom-marker',
+              html: createMarkerHtml(typeVisual.emoji, typeVisual.bgColor, typeVisual.shadow, 'dashboard-sos-marker'),
+              iconSize: [32, 32],
+              iconAnchor: [16, 16]
+            });
+
+            let marker = L.marker([lat, lng], { icon })
+              .addTo(dashMap)
+              .bindPopup(`<div style="color:#f87171;font-weight:600;">🚨 ${type}</div><div style="color:#e2e8f0;">${name}</div><div style="color:#94a3b8;font-size:11px;">Severity: ${severity}</div>`);
+            
+            mapMarkers[reqId] = marker;
+          }
+        });
+
+        // Remove old markers that are no longer active
+        Object.keys(mapMarkers).forEach(id => {
+          if (!currentIds.has(id)) {
+            dashMap.removeLayer(mapMarkers[id]);
+            delete mapMarkers[id];
+          }
+        });
+      })
+      .catch(err => console.error("Map fetch error:", err));
+  }
+
+  // Initial fetch and poll every 5 seconds
+  updateMapSOS();
+  setInterval(updateMapSOS, 5000);
 }
 </script>
+

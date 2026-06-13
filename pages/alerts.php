@@ -1,8 +1,8 @@
 <?php
 /**
  * Alerts Page - Emergency Alerts & Notifications
- * Chennai Region - Saveetha University
- * Data loaded via AJAX from AWS-DynamoDB (api/alerts.php)
+ * Banglore Region - Saveetha University
+ * Data loaded via AJAX from Google Cloud  (api/alerts.php)
  */
 require_once __DIR__ . '/../config.php';
 ?>
@@ -10,7 +10,7 @@ require_once __DIR__ . '/../config.php';
 <style>
 @keyframes alertSlideIn {
   from { opacity: 0; transform: translateY(-20px); }
-  to   { opacity: 1; transform: translateY(0); }
+  to   { opacity: 1; transform: translateY(0); }  
 }
 @keyframes badgePulse {
   0%   { box-shadow: 0 0 0 0 rgba(251,146,60,0.5); }
@@ -25,7 +25,7 @@ require_once __DIR__ . '/../config.php';
     <div class="flex items-center justify-between mb-6">
       <div>
         <h3 class="text-lg font-semibold text-white">All Active Alerts</h3>
-        <p class="text-sm text-slate-400">Sorted by newest - Chennai Region
+        <p class="text-sm text-slate-400">Sorted by newest - Banglore Region
           <span id="dataSourceBadge" class="ml-2 px-2 py-0.5 text-xs rounded-full bg-slate-700 text-slate-400">loading...</span>
           <span id="lastFetched" class="ml-2 text-xs text-slate-500"></span>
         </p>
@@ -43,7 +43,7 @@ require_once __DIR__ . '/../config.php';
           <circle class="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" stroke-width="4"></circle>
           <path class="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8v8z"></path>
         </svg>
-        <span class="ml-3 text-slate-400">Loading alerts from AWS-DynamoDB...</span>
+        <span class="ml-3 text-slate-400">Loading alerts from Google Cloud ...</span>
       </div>
     </div>
   </div>
@@ -53,7 +53,7 @@ require_once __DIR__ . '/../config.php';
     <div>
       <h1 class="text-2xl font-bold text-white">Alerts & Notifications</h1>
       <p class="text-slate-400 text-sm mt-1">
-        Real-time emergency alerts - Chennai Region
+        Real-time emergency alerts - Banglore Region
       </p>
     </div>
     <div class="flex items-center gap-3">
@@ -199,7 +199,7 @@ require_once __DIR__ . '/../config.php';
 
     <!-- Alert Rules -->
     <div class="control-card">
-      <h3 class="text-lg font-semibold text-white mb-6">Alert Rules - Chennai Region</h3>
+      <h3 class="text-lg font-semibold text-white mb-6">Alert Rules - Banglore Region</h3>
       
       <div class="space-y-4">
         <div class="p-4 bg-red-500/10 border border-red-500/30 rounded-lg">
@@ -215,7 +215,7 @@ require_once __DIR__ . '/../config.php';
             <span class="status-indicator busy"></span>
             <span class="text-amber-400 font-medium">High Priority</span>
           </div>
-          <p class="text-slate-400 text-sm">Accidents, breathing difficulties, chest pain in Chennai region</p>
+          <p class="text-slate-400 text-sm">Accidents, breathing difficulties, chest pain in Banglore region</p>
         </div>
         
         <div class="p-4 bg-cyan-500/10 border border-cyan-500/30 rounded-lg">
@@ -240,7 +240,7 @@ require_once __DIR__ . '/../config.php';
 
 <script>
 // ============================================================
-// Alerts AJAX — fetches from api/alerts.php (AWS-DynamoDB)
+// Alerts AJAX — fetches from api/alerts.php (Google Cloud )
 // Incremental: only prepends NEW entries, never re-renders all
 // ============================================================
 const severityColors = {
@@ -282,7 +282,7 @@ function renderAlertRow(alert) {
   const sev   = (alert.severity || 'medium').toLowerCase();
   const color = severityColors[sev] || 'cyan';
   const initial = (alert.user_name || 'U').charAt(0).toUpperCase();
-  const location = alert.location?.name || alert.pickup_location || 'Chennai';
+  const location = alert.location?.name || alert.pickup_location || 'Banglore';
   const statusSlug = (alert.status || 'pending').toLowerCase().replace(/ /g,'-');
   const id = alert._id || alert.id || Math.random().toString(36).slice(2);
 
@@ -345,7 +345,7 @@ function loadAlerts(severity) {
   if (!initialLoadDone) {
     container.innerHTML = `<div class="flex items-center justify-center py-12">
       <svg class="animate-spin w-6 h-6 text-indigo-400" fill="none" viewBox="0 0 24 24"><circle class="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" stroke-width="4"></circle><path class="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8v8z"></path></svg>
-      <span class="ml-3 text-slate-400 text-sm">Fetching from AWS-DynamoDB...</span>
+      <span class="ml-3 text-slate-400 text-sm">Fetching from Google Cloud ...</span>
     </div>`;
   }
 
@@ -357,7 +357,7 @@ function loadAlerts(severity) {
       // Update source badge
       const badge = document.getElementById('dataSourceBadge');
       if (data.source === 'mongodb') {
-        badge.textContent = '⚡ AWS-DynamoDB';
+        badge.textContent = '⚡ Google Cloud ';
         badge.className = 'ml-2 px-2 py-0.5 text-xs rounded-full bg-orange-500/20 text-orange-400';
       } else {
         badge.textContent = '📦 Demo Data';
@@ -393,7 +393,7 @@ function loadAlerts(severity) {
                 <span class="text-white font-semibold">${escHtml(a.user_name||'Unknown')}</span>
                 <span class="text-red-400 text-xs">• ${escHtml(a.emergency_type||'Emergency')}</span>
               </div>
-              <p class="text-slate-400 text-sm">${escHtml(a.location?.name||a.pickup_location||'Chennai')}</p>
+              <p class="text-slate-400 text-sm">${escHtml(a.location?.name||a.pickup_location||'Banglore')}</p>
             </div>
             <div class="text-right">
               <p class="text-red-400 text-sm font-medium">${timeAgoJS(a.created_at)}</p>

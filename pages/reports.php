@@ -281,6 +281,20 @@ $todayRequests = array_filter($requestList, fn($r) => date('Y-m-d', strtotime($r
               </button>
             </td>
           </tr>
+          <tr>
+            <td class="text-white">User Report - Arun</td>
+            <td><span class="px-2 py-1 bg-teal-500/20 text-teal-400 text-xs rounded">User</span></td>
+            <td class="text-slate-400">Phone: 9492633000</td>
+            <td class="text-slate-400">Apr 25, 2026</td>
+            <td><span class="px-2 py-1 bg-emerald-500/20 text-emerald-400 text-xs rounded">Excel</span></td>
+            <td>
+              <button class="p-2 text-slate-400 hover:text-white hover:bg-slate-700/50 rounded-lg transition">
+                <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                  <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 16v1a3 3 0 003 3h10a3 3 0 003-3v-1m-4-4l-4 4m0 0l-4-4m4 4V4" />
+                </svg>
+              </button>
+            </td>
+          </tr>
         </tbody>
       </table>
     </div>
