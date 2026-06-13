@@ -4,3 +4,9 @@
 .env.local
 .env.*.local
 !.env.example
+node_modules/
+.flutter-plugins
+build/
+.env
+*.log
+vendor/
