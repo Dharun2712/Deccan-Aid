@@ -248,3 +248,71 @@ To maintain rapid velocity without compromising stability, strict milestones act
 **Suggested GitHub Issues**: #50 Setup Load Tests, #51 Configure Cloud Logging.
 **Suggested Branch Names**: `chore/testing-gates`, `deploy/staging-env`
 **Suggested Commit Messages**: `test(e2e): configure playwright flow for driver acceptance`
+
+---
+
+## 6. Engineering Task Breakdown & Execution Plan
+
+### Task Priorities & Ownership Matrix
+
+| Area | High Priority (P0) | Medium Priority (P1) | Owner |
+| :--- | :--- | :--- | :--- |
+| **Frontend** | Authentication UI, SOS Creation UI, Maps Rendering | Hospital Web Dashboard, Profile Settings | Frontend Squad |
+| **Backend** | FastApi Boilerplate, Geospatial Dispatch, Socket.IO | Push Notifications, Analytics Export | Backend Squad |
+| **AI** | Gemini Symptom Extractor | Voice-to-Text preprocessing | Backend Squad |
+| **DevOps** | Cloud Run Config, MongoDB Atlas setup, CI Actions | Custom Domain Mapping, SSL certs | DevOps Lead |
+
+### Pull Request & Branch Strategy
+All work begins from the `develop` branch.
+- **Format**: `<type>/<issue-number>-<short-description>`
+- **Example**: `feature/15-citizen-sos-button`
+- **PR Requirement**: 1 approval from a peer engineer; passing CI pipeline.
+
+### Definition of Done (DoD)
+A task is not moved to "Done" until:
+1. Code is written and merged into `develop`.
+2. Unit tests are added and passing.
+3. Feature is manually verified by the Product Owner in the Staging environment.
+4. API documentation (Swagger) is updated.
+
+### Risk Register & Dependency Matrix
+| Risk | Impact | Mitigation Strategy | Dependency |
+| :--- | :--- | :--- | :--- |
+| Socket.IO connection drops | High (Loss of tracking) | Implement offline caching and auto-reconnect on the Flutter client. | Stable mobile network |
+| Gemini API Rate Limiting | Med (Delayed Triage) | Fallback to manual symptom entry forms if API returns 429 status. | Google Cloud Quotas |
+| Slow Google Maps API | Med (Stuck UI) | Load map asynchronously; show a lightweight skeleton loader while waiting. | GCP Billing limits |
+
+### 36-Hour Hackathon Sprint Plan
+
+```mermaid
+gantt
+    title SmartAid 36-Hour Hackathon Execution Plan
+    dateFormat  HH:mm
+    axisFormat %H:%M
+    
+    section Sprint 1 (0-6h)
+    Repo Setup & Boilerplates : 00:00, 2h
+    Database Provisioning     : 02:00, 2h
+    Auth Integration          : 04:00, 2h
+    
+    section Sprint 2 (6-16h)
+    Citizen SOS Frontend      : 06:00, 5h
+    Backend Dispatch API      : 06:00, 5h
+    Driver Acceptance UI      : 11:00, 5h
+    
+    section Sprint 3 (16-24h)
+    Socket.IO Live Tracking   : 16:00, 4h
+    Google Maps Rendering     : 20:00, 4h
+    
+    section Sprint 4 (24-30h)
+    Gemini AI Integration     : 24:00, 3h
+    Hospital Dashboard        : 27:00, 3h
+    
+    section Sprint 5 (30-36h)
+    End-to-End Testing        : 30:00, 3h
+    Pitch Prep & Polish       : 33:00, 3h
+```
+
+**Suggested GitHub Issues**: #60 Define DoD, #61 Track Risks.
+**Suggested Branch Names**: `docs/engineering-plan`
+**Suggested Commit Messages**: `docs: create engineering execution plan and task breakdown`
