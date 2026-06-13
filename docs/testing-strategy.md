@@ -71,3 +71,40 @@ Integration testing validates the interplay between microservice components with
   - Setup and Teardown hooks drop collections between tests to ensure a clean state and prevent test pollution.
   - Validates geospatial indexes (2dsphere) used for ambulance routing.
 - **Test Data Management**: Fixtures (`pytest` fixtures) are created to inject predictable, reproducible datasets (e.g., standardized hospital coordinates, mocked citizen profiles) into the test database.
+
+---
+
+## 9. End-to-End (E2E) Testing Approach
+End-to-End tests simulate real users interacting with the system, validating the entire tech stack from the Flutter UI through the Cloud Run APIs, down to MongoDB and external AI/Map services.
+
+### Core User Journey Validation Plans
+E2E testing focuses on cross-platform workflows. Tools like Flutter Integration Test or Appium are utilized.
+
+1. **Citizen SOS Flow**:
+   - Citizen logs in -> Triggers SOS -> System captures GPS via Google Maps -> Backend creates incident -> Citizen UI updates to "Searching for Ambulance".
+2. **Ambulance Driver Flow**:
+   - Driver connects via Socket.IO -> Receives broadcasted SOS -> Accepts SOS -> Routing initiated via Google Maps API -> Citizen receives Driver coordinates.
+3. **Hospital Coordination Flow**:
+   - Backend triggers Gemini AI for triage prediction based on citizen's vital inputs -> Hospital dashboard receives pre-arrival notification via WebSocket -> Hospital acknowledges readiness.
+4. **Realtime Tracking Flow**:
+   - Driver app continuously emits location data over Socket.IO -> Backend processes stream -> Citizen app renders real-time movement on map.
+
+## 10. Performance & Load Testing
+Performance testing ensures SmartAid can handle sudden city-wide emergencies without degradation.
+
+### Testing Strategy & Tooling
+We utilize tools like **Locust** or **k6** for backend load testing, simulating thousands of concurrent users.
+
+- **Load Testing**: Determining system behavior under expected peak usage.
+  - *Scenario*: Simulating 500 active ambulances emitting Socket.IO location pings every 3 seconds.
+- **Stress Testing**: Pushing the system beyond its limits to identify the breaking point and observe how Cloud Run auto-scaling responds.
+  - *Scenario*: Ramping up to 10,000 concurrent citizen connections.
+- **Emergency Spike Testing**: Simulating sudden, massive traffic surges (e.g., natural disaster scenario) to validate cold-start handling and database connection pooling.
+
+### Performance Benchmarks
+| Metric | Target | Failure Threshold |
+| :--- | :--- | :--- |
+| **API Response Time (p95)** | < 300ms | > 800ms |
+| **Socket.IO Event Broadcast Latency** | < 150ms | > 500ms |
+| **Gemini AI Triage Response** | < 2.5s | > 5s |
+| **Database Query Execution (Indexed)** | < 20ms | > 100ms |
