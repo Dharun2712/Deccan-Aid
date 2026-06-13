@@ -103,6 +103,9 @@ Deccan-Aid provides:
 └──────────────────┘         └──────────────────┘         └──────────────────┘
 ```
 
+### IoT Edge Architecture
+The ESP32 accident-detection node is documented in [docs/iot-architecture.md](docs/iot-architecture.md). It uses the MPU6050, GPS module, buzzer, and Wi-Fi link to detect and report accidents from the edge device.
+
 ### Backend Architecture (FastAPI)
 ```
 ┌───────────────────────────────────────────────────────────────────────┐
