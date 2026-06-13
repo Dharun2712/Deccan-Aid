@@ -109,3 +109,43 @@ SmartAid will interface directly with urban IoT devices to create a frictionless
 
 ### Predictive Emergency Detection
 - Integrating with vehicle crash detection APIs and smart home sensors to trigger autonomous SOS dispatches without human intervention, ensuring help is sent immediately even if the citizen is incapacitated.
+
+---
+
+## 8. Long-Term Product Evolution Strategy
+SmartAid is designed to scale from a localized pilot to a ubiquitous global platform over a 5-year horizon.
+
+### 1-Year Roadmap: National Expansion
+- **Goal**: Establish market dominance in the launch country by onboarding 50+ major hospital networks.
+- **Product Evolution**: Launch native Drone Dispatch integration for delivering Automated External Defibrillators (AEDs) to remote areas ahead of the physical ambulance.
+- **Business Model Evolution**: Transition from pilot programs to tiered SaaS subscriptions for hospital networks based on ambulance fleet size and API volume.
+
+### 3-Year Roadmap: Ecosystem Maturation
+- **Goal**: Expand into neighboring international markets and integrate directly with national telecom providers.
+- **Product Evolution**: Introduction of AR (Augmented Reality) interfaces for paramedics via smart glasses, overlaying Gemini AI triage insights and patient history directly into their field of view.
+- **International Expansion**: Localization of the Flutter app into 20+ languages and compliance with diverse international healthcare data standards (e.g., HL7 FHIR).
+
+### 5-Year Vision: The Autonomous Emergency Network
+- **Goal**: SmartAid operates as the default, invisible emergency layer powering smart cities globally.
+- **Product Evolution**: Full integration with Autonomous Vehicles. In the event of an emergency, self-driving cars automatically clear paths or act as provisional transport units if ambulances are unavailable.
+- **Global Strategy**: Establishing SmartAid as a global standard protocol for emergency data transmission, governed by an international consortium of healthcare providers and technology partners.
+
+### Milestone Timeline
+
+```mermaid
+gantt
+    title SmartAid Strategic Roadmap
+    dateFormat  YYYY-MM-DD
+    section Phase 1 (MVP)
+    Hackathon Delivery           :active, a1, 2026-06-01, 3d
+    section Phase 2
+    Hospital Dashboard Beta      :a2, after a1, 30d
+    HIPAA Compliance Layer       :a3, after a1, 45d
+    section Phase 3
+    EHR Integration              :a4, after a2, 60d
+    Govt/911 API Gateway         :a5, after a3, 60d
+    section Long Term
+    AI Predictive Dispatch       :a6, after a5, 120d
+    Smart City Traffic Integration:a7, after a6, 180d
+    National Expansion           :a8, after a7, 365d
+```
