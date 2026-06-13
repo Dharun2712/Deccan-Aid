@@ -149,3 +149,72 @@ The frontend engineering is broken down into specific parallel workstreams.
 - **Acceptance Criteria**: Tapping a notification routes the user to the correct incident screen.
 
 **Suggested Commit Messages**: `feat(ui): implement swipe-to-accept for driver requests`
+
+---
+
+## 4. Backend & AI Workstreams
+
+### Database Setup
+- **Tasks**: Provision MongoDB Atlas, define Motor (async Python driver) connection pool, create base ODM models.
+- **Issues**: #30 MongoDB Provisioning, #31 Define ODM Models.
+- **Branches**: `chore/db-setup`
+- **Deliverables**: Connectable database with `users`, `incidents`, and `hospitals` collections.
+- **Acceptance Criteria**: Backend successfully reads/writes to MongoDB locally and via connection string.
+
+### FastAPI Setup
+- **Tasks**: Initialize FastAPI app, configure CORS, setup structured JSON logging, and error handlers.
+- **Issues**: #32 FastAPI Boilerplate.
+- **Branches**: `chore/api-setup`
+- **Deliverables**: Running ASGI server with auto-generated OpenAPI docs.
+- **Acceptance Criteria**: `/docs` route loads Swagger UI successfully.
+
+### Authentication APIs
+- **Tasks**: Implement Firebase JWT verification middleware, sync user profile to MongoDB.
+- **Issues**: #33 Auth Middleware.
+- **Branches**: `feature/api-auth`
+- **Deliverables**: `@requires_auth` decorator for route protection.
+- **Acceptance Criteria**: Reject requests with missing or invalid Bearer tokens with 401 Unauthorized.
+
+### Emergency APIs
+- **Tasks**: `POST /sos` endpoint to create an incident with geolocation payload.
+- **Issues**: #34 SOS Endpoint.
+- **Branches**: `feature/api-sos`
+- **Deliverables**: Incident creation logic with initial state set to `SEARCHING`.
+- **Acceptance Criteria**: Payload requires valid latitude and longitude floats.
+
+### Dispatch APIs
+- **Tasks**: Geospatial query to find nearest active drivers, calculate Google Maps ETA, emit push notification.
+- **Issues**: #35 Dispatch Logic, #36 Maps Routing API.
+- **Branches**: `feature/api-dispatch`
+- **Deliverables**: Algorithm to match SOS to the closest available ambulance.
+- **Acceptance Criteria**: Successfully filters out offline drivers and returns nearest driver within a 10km radius.
+
+### Hospital APIs
+- **Tasks**: Endpoints for updating hospital bed capacity and retrieving incoming incidents.
+- **Issues**: #37 Hospital Capacity Endpoints.
+- **Branches**: `feature/api-hospital`
+- **Deliverables**: CRUD operations for Hospital entity.
+- **Acceptance Criteria**: Only users with `role: hospital` can access capacity modification endpoints.
+
+### Tracking APIs
+- **Tasks**: Set up `python-socketio` ASGI app, implement `update_location` event handler, broadcast to room.
+- **Issues**: #38 Socket.IO Server.
+- **Branches**: `feature/api-tracking`
+- **Deliverables**: WebSocket server capable of broadcasting coordinates.
+- **Acceptance Criteria**: Client successfully connects to `ws://` and receives location payloads.
+
+### Notification APIs
+- **Tasks**: Implement Firebase Admin SDK to trigger Cloud Messaging payloads.
+- **Issues**: #39 Push Notification Service.
+- **Branches**: `feature/api-notifications`
+- **Deliverables**: Service layer to send custom alerts (e.g., "Ambulance Arriving").
+- **Acceptance Criteria**: Backend logs successful FCM message ID delivery.
+
+### Gemini Services & Accident Detection
+- **Tasks**: Integrate `google-generativeai` SDK. Build strict system prompt for triage extraction. Build endpoint to process accelerometer data for crash signatures.
+- **Issues**: #40 Gemini Triage Agent, #41 Crash Signature Engine.
+- **Branches**: `feature/ai-triage`
+- **Deliverables**: AI parsing function that returns guaranteed JSON structure.
+- **Acceptance Criteria**: Given a panic phrase ("My dad collapsed and isn't breathing"), AI returns `{"severity": "CRITICAL", "symptoms": ["unconscious", "apnea"]}`.
+
+**Suggested Commit Messages**: `feat(api): implement geospatial querying for nearest ambulance`
