@@ -89,3 +89,23 @@ Phase 3 focuses on tying SmartAid directly into existing municipal infrastructur
 ### Scaling Strategy
 - **Technical Scaling**: Transition to Google Kubernetes Engine (GKE) to handle massive concurrent WebSocket connections.
 - **Market Scaling**: Utilize a B2B2C model, selling the platform as a SaaS solution to private hospitals while offering the Citizen app for free.
+
+---
+
+## 7. AI & Smart City Integration Milestones
+SmartAid's true transformative power lies in its deep integration with Artificial Intelligence and urban Smart City infrastructure.
+
+### Gemini AI Roadmap
+The integration with Google Gemini will evolve from a simple chatbot to a proactive clinical decision support system.
+- **Milestone 1 (MVP)**: Conversational triage and structured symptom extraction.
+- **Milestone 2**: Multimodal AI analysis (allowing users to upload photos of injuries for Gemini to analyze and suggest severity).
+- **Milestone 3**: Predictive Hospital Capacity routing, where AI recommends the optimal hospital not just based on distance, but on predicted ER wait times and specialized trauma capabilities.
+
+### IoT & Smart City Integrations
+SmartAid will interface directly with urban IoT devices to create a frictionless path for emergency vehicles.
+- **Traffic Systems Integration**: Partnering with city traffic management APIs to dynamically alter traffic light patterns, creating "Green Corridors" for approaching ambulances.
+- **Smart Ambulance Systems**: Deep integration with onboard ambulance telematics and biomedical monitors (e.g., streaming live ECG data directly to the receiving hospital dashboard).
+- **Predictive Analytics & Emergency Intelligence**: Utilizing historical dispatch data and weather APIs to deploy predictive AI models that preemptively position idle ambulances in high-risk zones before emergencies even occur.
+
+### Predictive Emergency Detection
+- Integrating with vehicle crash detection APIs and smart home sensors to trigger autonomous SOS dispatches without human intervention, ensuring help is sent immediately even if the citizen is incapacitated.
