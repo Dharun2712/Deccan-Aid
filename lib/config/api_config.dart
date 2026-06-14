@@ -38,16 +38,10 @@ class ApiConfig {
 
   // First-aid chatbot
   static String get firstAidChat => "$baseUrl/api/first-aid/chat";
-
-  // Voice AI (STT + TTS via Groq — no API keys in Flutter)
-  static String get voiceStt => "$baseUrl/api/voice/stt";
-  static String get voiceTts => "$baseUrl/api/voice/tts";
-  static String get voiceHealth => "$baseUrl/api/voice/health";
-
+  
   // Timeout configuration
   static const Duration requestTimeout = Duration(seconds: 15);
-  static const Duration voiceTimeout = Duration(seconds: 30); // STT + TTS can be slower
-
+  
   // Storage keys
   static const String tokenKey = "auth_token";
   static const String roleKey = "user_role";

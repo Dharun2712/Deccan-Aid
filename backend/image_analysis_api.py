@@ -1,15 +1,13 @@
 """
 Accident Image Analysis API Router — LifeLink / MediConnect
 Provides HTTP endpoints for uploading accident scene images and receiving
-AI-powered severity analysis exclusively via Groq Vision.
-
-No Gemini. No deprecated models. No fallback providers.
+AI-powered severity analysis via Google Gemini.
 
 Endpoints:
   POST /api/accident-image/analyze       — Upload & analyse an image
   GET  /api/accident-image/images/{id}   — List S3 images for an accident
   GET  /api/accident-image/health        — Image-analysis service health
-  GET  /api/groq/health                  — Groq connectivity health check
+  GET  /api/gemini/health                — Gemini connectivity health check
 """
 
 import os
@@ -27,13 +25,9 @@ logger = logging.getLogger(__name__)
 # ─────────────────────────────────────────────
 # Model Constants  (resolved at import time)
 # ─────────────────────────────────────────────
-VISION_MODEL = os.getenv(
-    "VISION_MODEL",
-    "meta-llama/llama-4-scout-17b-16e-instruct",
-)
-CHAT_MODEL = os.getenv(
-    "CHAT_MODEL",
-    "meta-llama/llama-4-scout-17b-16e-instruct",
+GEMINI_MODEL = os.getenv(
+    "GEMINI_MODEL",
+    "gemini-1.5-flash",
 )
 
 # ─────────────────────────────────────────────
@@ -44,9 +38,9 @@ image_analysis_router = APIRouter(
     tags=["Accident Image Analysis"],
 )
 
-groq_health_router = APIRouter(
-    prefix="/api/groq",
-    tags=["Groq Health"],
+gemini_health_router = APIRouter(
+    prefix="/api/gemini",
+    tags=["Gemini Health"],
 )
 
 # ─────────────────────────────────────────────
@@ -66,8 +60,7 @@ async def analyze_accident(
     lng: Optional[float] = Form(None, description="Longitude of accident location"),
 ):
     """
-    🚑 Analyze an accident scene image using Groq Vision
-    (meta-llama/llama-4-scout-17b-16e-instruct).
+    🚑 Analyze an accident scene image using Gemini Vision (gemini-1.5-flash).
 
     Returns emergency-response-oriented assessment:
     - Severity (low / medium / high / critical)
@@ -90,7 +83,7 @@ async def analyze_accident(
             status_code=400,
             content={
                 "success": False,
-                "provider": "groq",
+                "provider": "gemini",
                 "error": "unsupported_file_type",
                 "message": (
                     f"Unsupported file type: {content_type}. "
@@ -108,7 +101,7 @@ async def analyze_accident(
             status_code=400,
             content={
                 "success": False,
-                "provider": "groq",
+                "provider": "gemini",
                 "error": "file_too_large",
                 "message": (
                     f"File too large ({image_size} bytes). "
@@ -122,28 +115,28 @@ async def analyze_accident(
             status_code=400,
             content={
                 "success": False,
-                "provider": "groq",
+                "provider": "gemini",
                 "error": "empty_file",
                 "message": "Uploaded file is empty.",
             },
         )
 
     logger.info(
-        f"Using Groq model: {VISION_MODEL}"
+        f"Using Gemini model: {GEMINI_MODEL}"
     )
     logger.info(
         f"📸 Received accident image: {file.filename} | "
         f"Size: {image_size} bytes | Type: {content_type}"
     )
 
-    # ── Run Groq Vision Analysis ───────────────────────────────────
+    # ── Run Gemini Vision Analysis ───────────────────────────────────
     try:
-        from groq_service import analyze_accident_image_with_groq
-        result = analyze_accident_image_with_groq(image_bytes, mime_type=content_type)
+        from gemini_service import analyze_accident_image_with_gemini
+        result = analyze_accident_image_with_gemini(image_bytes, mime_type=content_type)
     except Exception as exc:
         elapsed_ms = (time.time() - start_time) * 1000
         logger.error(
-            f"❌ Groq image analysis failed after {elapsed_ms:.0f}ms | "
+            f"❌ Gemini image analysis failed after {elapsed_ms:.0f}ms | "
             f"file={file.filename} | size={image_size} | type={content_type}"
         )
         logger.error(traceback.format_exc())
@@ -151,7 +144,7 @@ async def analyze_accident(
             status_code=500,
             content={
                 "success": False,
-                "provider": "groq",
+                "provider": "gemini",
                 "error": "model_error",
                 "message": str(exc),
             },
@@ -162,13 +155,13 @@ async def analyze_accident(
     # ── Build success response ─────────────────────────────────────
     response: dict = {
         "success": True,
-        "provider": "groq",
+        "provider": "gemini",
         "analysis": result,
         "metadata": {
             "filename": file.filename,
             "file_size_bytes": image_size,
             "content_type": content_type,
-            "model": VISION_MODEL,
+            "model": GEMINI_MODEL,
             "processing_time_ms": round(elapsed_ms, 2),
         },
     }
@@ -216,7 +209,7 @@ async def get_accident_images(accident_id: str):
             status_code=500,
             content={
                 "success": False,
-                "provider": "groq",
+                "provider": "gemini",
                 "error": "s3_error",
                 "message": str(exc),
             },
@@ -229,59 +222,59 @@ async def get_accident_images(accident_id: str):
 @image_analysis_router.get("/health")
 async def image_analysis_health():
     """Health check for the image analysis service."""
-    groq_available = bool(os.environ.get("GROQ_API_KEY", ""))
-    status = "ready" if groq_available else "no_api_key"
+    gemini_available = bool(os.environ.get("GEMINI_API_KEY", "") or os.environ.get("GOOGLE_API_KEY", ""))
+    status = "ready" if gemini_available else "no_api_key"
     return {
         "success": True,
         "service": "accident-image-analysis",
-        "provider": "groq",
+        "provider": "gemini",
         "status": status,
-        "model": VISION_MODEL,
-        "groq_api_key_present": groq_available,
+        "model": GEMINI_MODEL,
+        "gemini_api_key_present": gemini_available,
         "max_file_size_mb": MAX_FILE_SIZE // (1024 * 1024),
         "supported_formats": sorted(ALLOWED_MIME_TYPES),
     }
 
 
 # ─────────────────────────────────────────────
-# GET /api/groq/health
+# GET /api/gemini/health
 # ─────────────────────────────────────────────
-@groq_health_router.get("/health")
-async def groq_health():
+@gemini_health_router.get("/health")
+async def gemini_health():
     """
-    Groq API connectivity health check.
+    Gemini API connectivity health check.
 
     Tests actual connectivity by calling client.models.list().
 
     Response:
     {
       "success": true,
-      "provider": "groq",
+      "provider": "gemini",
       "api_key_present": true,
-      "model": "meta-llama/llama-4-scout-17b-16e-instruct",
+      "model": "gemini-1.5-flash",
       "connectivity": "ok"
     }
     """
-    logger.info(f"Using Groq model: {VISION_MODEL}")
+    logger.info(f"Using Gemini model: {GEMINI_MODEL}")
 
     try:
-        from groq_service import check_groq_connectivity
-        result = check_groq_connectivity()
+        from gemini_service import check_gemini_connectivity
+        result = check_gemini_connectivity()
         status_code = 200 if result["success"] else 503
         return JSONResponse(status_code=status_code, content=result)
     except Exception as exc:
-        logger.error(f"❌ Groq health check failed: {exc}")
+        logger.error(f"❌ Gemini health check failed: {exc}")
         return JSONResponse(
             status_code=503,
             content={
                 "success": False,
-                "provider": "groq",
-                "api_key_present": bool(os.environ.get("GROQ_API_KEY", "")),
-                "model": VISION_MODEL,
+                "provider": "gemini",
+                "api_key_present": bool(os.environ.get("GEMINI_API_KEY", "") or os.environ.get("GOOGLE_API_KEY", "")),
+                "model": GEMINI_MODEL,
                 "connectivity": f"error: {str(exc)}",
             },
         )
 
 
 # Export
-__all__ = ["image_analysis_router", "groq_health_router"]
+__all__ = ["image_analysis_router", "gemini_health_router"]

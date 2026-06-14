@@ -1,50 +1,48 @@
 @echo off
 REM START script for LifeLink / MediConnect FastAPI backend
-REM AI Provider: Groq exclusively (meta-llama/llama-4-scout-17b-16e-instruct)
-REM No Gemini. No deprecated models.
+REM AI Providers: Google Gemini & Sarvam AI
+REM Core backend service configuration.
 
 cd /d "%~dp0"
 
 echo ============================================
 echo  LifeLink / MediConnect FastAPI Backend
-echo  AI Provider: Groq (llama-4-scout)
+echo  AI Providers: Google Gemini & Sarvam AI
 echo ============================================
 
 REM Force Python produce UTF-8 output on Windows consoles
 set "PYTHONUTF8=1"
 
-REM ── Load GROQ_API_KEY from backend\.env, then ..\\.env as fallback ──
-if not defined GROQ_API_KEY (
+REM ── Load GEMINI_API_KEY from backend\.env, then ..\\.env as fallback ──
+if not defined GEMINI_API_KEY (
     if exist "%CD%\.env" (
         for /f "usebackq tokens=1,* delims==" %%A in ("%CD%\.env") do (
-            if /I "%%A"=="GROQ_API_KEY"  set "GROQ_API_KEY=%%B"
-            if /I "%%A"=="VISION_MODEL"  set "VISION_MODEL=%%B"
-            if /I "%%A"=="CHAT_MODEL"    set "CHAT_MODEL=%%B"
+            if /I "%%A"=="GEMINI_API_KEY"  set "GEMINI_API_KEY=%%B"
+            if /I "%%A"=="GEMINI_MODEL"    set "GEMINI_MODEL=%%B"
+            if /I "%%A"=="SARVAM_API_KEY"  set "SARVAM_API_KEY=%%B"
         )
     )
 )
-if not defined GROQ_API_KEY (
+if not defined GEMINI_API_KEY (
     if exist "%CD%\..\.env" (
         for /f "usebackq tokens=1,* delims==" %%A in ("%CD%\..\.env") do (
-            if /I "%%A"=="GROQ_API_KEY"  set "GROQ_API_KEY=%%B"
-            if /I "%%A"=="VISION_MODEL"  set "VISION_MODEL=%%B"
-            if /I "%%A"=="CHAT_MODEL"    set "CHAT_MODEL=%%B"
+            if /I "%%A"=="GEMINI_API_KEY"  set "GEMINI_API_KEY=%%B"
+            if /I "%%A"=="GEMINI_MODEL"    set "GEMINI_MODEL=%%B"
+            if /I "%%A"=="SARVAM_API_KEY"  set "SARVAM_API_KEY=%%B"
         )
     )
 )
 
 REM ── Set default models if not loaded from env ──
-if not defined VISION_MODEL set "VISION_MODEL=meta-llama/llama-4-scout-17b-16e-instruct"
-if not defined CHAT_MODEL   set "CHAT_MODEL=meta-llama/llama-4-scout-17b-16e-instruct"
+if not defined GEMINI_MODEL set "GEMINI_MODEL=gemini-1.5-flash"
 
-REM ── Validate GROQ_API_KEY ──
-if not defined GROQ_API_KEY (
-    echo [ERROR] GROQ_API_KEY not set. Image analysis and chatbot will fail.
-    echo [HINT]  Add GROQ_API_KEY to backend\.env or project-root .env.
+REM ── Validate GEMINI_API_KEY ──
+if not defined GEMINI_API_KEY (
+    echo [ERROR] GEMINI_API_KEY not set. Image analysis and chatbot will fail.
+    echo [HINT]  Add GEMINI_API_KEY to backend\.env or project-root .env.
 ) else (
-    echo [INFO] GROQ_API_KEY detected. Groq services are enabled.
-    echo [INFO] VISION_MODEL: %VISION_MODEL%
-    echo [INFO] CHAT_MODEL:   %CHAT_MODEL%
+    echo [INFO] GEMINI_API_KEY detected. Gemini services are enabled.
+    echo [INFO] GEMINI_MODEL: %GEMINI_MODEL%
 )
 
 REM ── PYTHONPATH ──
@@ -110,13 +108,13 @@ if not exist "logs" mkdir logs
 echo.
 echo Server will be available at:
 echo   - API Docs:      http://localhost:8000/docs
-echo   - Groq Health:   http://localhost:8000/api/groq/health
+echo   - Gemini Health: http://localhost:8000/api/gemini/health
 echo   - Image Analyze: POST http://localhost:8000/api/accident-image/analyze
 echo Logs: %CD%\logs\uvicorn.log
 echo Starting server in a new window...
 
 REM ── Start uvicorn ──
-powershell -NoProfile -Command "$env:GROQ_API_KEY='%GROQ_API_KEY%'; $env:VISION_MODEL='%VISION_MODEL%'; $env:CHAT_MODEL='%CHAT_MODEL%'; Start-Process -FilePath '%CD%\venv\Scripts\python.exe' -ArgumentList '-u', '-m', 'uvicorn', 'app_fastapi:socket_app', '--host', '0.0.0.0', '--port', '8000', '--log-level', 'info' -WindowStyle Minimized -RedirectStandardOutput '%CD%\logs\uvicorn.log' -RedirectStandardError '%CD%\logs\uvicorn_err.log' -EnvironmentVariables @{'GROQ_API_KEY'='%GROQ_API_KEY%'; 'VISION_MODEL'='%VISION_MODEL%'; 'CHAT_MODEL'='%CHAT_MODEL%'}"
+powershell -NoProfile -Command "$env:GEMINI_API_KEY='%GEMINI_API_KEY%'; $env:GEMINI_MODEL='%GEMINI_MODEL%'; $env:SARVAM_API_KEY='%SARVAM_API_KEY%'; Start-Process -FilePath '%CD%\venv\Scripts\python.exe' -ArgumentList '-u', '-m', 'uvicorn', 'app_fastapi:socket_app', '--host', '0.0.0.0', '--port', '8000', '--log-level', 'info' -WindowStyle Minimized -RedirectStandardOutput '%CD%\logs\uvicorn.log' -RedirectStandardError '%CD%\logs\uvicorn_err.log' -EnvironmentVariables @{'GEMINI_API_KEY'='%GEMINI_API_KEY%'; 'GEMINI_MODEL'='%GEMINI_MODEL%'; 'SARVAM_API_KEY'='%SARVAM_API_KEY%'}"
 
 echo [INFO] Uvicorn starting in a separate window. Monitor: %CD%\logs\uvicorn.log
 echo.

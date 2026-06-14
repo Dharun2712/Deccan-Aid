@@ -14,18 +14,18 @@ _env_path = pathlib.Path(__file__).resolve().parent / ".env"
 load_dotenv(_env_path, override=True)
 
 # Startup diagnostics (printed before logging is configured)
-_chat_key = os.getenv("GROQ_API_KEY", "")
-_vision_key = os.getenv("GROQ_API_KEY_VISION", "")
+_gemini_key = os.getenv("GEMINI_API_KEY", "") or os.getenv("GOOGLE_API_KEY", "")
+_sarvam_key = os.getenv("SARVAM_API_KEY", "")
 print(f"[startup] ENV FILE       : {_env_path}  (exists={_env_path.exists()})")
-print(f"[startup] GROQ_API_KEY   : {'SET (' + _chat_key[:8] + '****)' if _chat_key else 'NOT SET'}")
-print(f"[startup] GROQ_VISION_KEY: {'SET (' + _vision_key[:8] + '****)' if _vision_key else 'NOT SET'}")
+print(f"[startup] GEMINI_API_KEY : {'SET (' + _gemini_key[:8] + '****)' if _gemini_key else 'NOT SET'}")
+print(f"[startup] SARVAM_API_KEY : {'SET (' + _sarvam_key[:8] + '****)' if _sarvam_key else 'NOT SET'}")
 
 import datetime
 import bcrypt
 import jwt
 import time
 from typing import Optional, List, Dict, Any
-from fastapi import FastAPI, HTTPException, Depends, Header, WebSocket, WebSocketDisconnect, Request
+from fastapi import FastAPI, HTTPException, Depends, Header, WebSocket, WebSocketDisconnect, Request, UploadFile, File, Form
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.responses import JSONResponse
 from pydantic import BaseModel, EmailStr, Field
@@ -35,15 +35,15 @@ import socketio
 from contextlib import asynccontextmanager
 import logging
 
-# Groq SDK availability check
+# Gemini SDK availability check
 try:
-    from groq import Groq as _GroqSDK
-    _GROQ_SDK_AVAILABLE = True
-except Exception as _groq_import_err:
-    _GROQ_SDK_AVAILABLE = False
-    logging.getLogger(__name__).warning(f"Groq SDK not available: {_groq_import_err}")
+    import google.generativeai as _genai
+    _GEMINI_SDK_AVAILABLE = True
+except Exception as _gemini_import_err:
+    _GEMINI_SDK_AVAILABLE = False
+    logging.getLogger(__name__).warning(f"Gemini SDK not available: {_gemini_import_err}")
 
-GROQ_AVAILABLE = _GROQ_SDK_AVAILABLE
+GEMINI_AVAILABLE = _GEMINI_SDK_AVAILABLE
 
 # AWS DynamoDB + SNS integration
 try:
@@ -87,10 +87,9 @@ MONGODB_URI = (
 DB_NAME = os.environ.get("DB_NAME", "smart_ambulance")
 JWT_SECRET = os.environ.get("JWT_SECRET", "your_secret_key_here_change_in_production")
 JWT_ALGORITHM = os.environ.get("JWT_ALGORITHM", "HS256")
-GROQ_API_KEY = os.environ.get("GROQ_API_KEY", "")
-GROQ_API_KEY_VISION = os.environ.get("GROQ_API_KEY_VISION", "")
-VISION_MODEL = os.getenv("VISION_MODEL", "meta-llama/llama-4-scout-17b-16e-instruct")
-CHAT_MODEL = os.getenv("CHAT_MODEL", "meta-llama/llama-4-scout-17b-16e-instruct")
+GEMINI_API_KEY = os.environ.get("GEMINI_API_KEY", "") or os.environ.get("GOOGLE_API_KEY", "")
+SARVAM_API_KEY = os.environ.get("SARVAM_API_KEY", "")
+GEMINI_MODEL = os.getenv("GEMINI_MODEL", "gemini-1.5-flash")
 MONGO_TLS_ALLOW_INVALID_CERTIFICATES = (
     os.environ.get("MONGO_TLS_ALLOW_INVALID_CERTIFICATES", "true").lower()
     in ("1", "true", "yes")
@@ -121,14 +120,13 @@ hospitals = db.hospitals
 @asynccontextmanager
 async def lifespan(app: FastAPI):
     # Startup: Create indexes
-    # ── Groq startup diagnostics ───────────────────────────────────
+    # ── Gemini & Sarvam AI startup diagnostics ───────────────────────────────────
     logger.info("=" * 50)
-    logger.info("GROQ CONFIGURATION")
+    logger.info("AI CONFIGURATION")
     logger.info("=" * 50)
-    logger.info(f"GROQ_API_KEY_PRESENT={bool(os.getenv('GROQ_API_KEY'))}")
-    logger.info(f"GROQ_API_KEY_VISION_PRESENT={bool(os.getenv('GROQ_API_KEY_VISION'))}")
-    logger.info(f"VISION_MODEL={VISION_MODEL}")
-    logger.info(f"CHAT_MODEL={CHAT_MODEL}")
+    logger.info(f"GEMINI_API_KEY_PRESENT={bool(os.getenv('GEMINI_API_KEY') or os.getenv('GOOGLE_API_KEY'))}")
+    logger.info(f"SARVAM_API_KEY_PRESENT={bool(os.getenv('SARVAM_API_KEY'))}")
+    logger.info(f"GEMINI_MODEL={GEMINI_MODEL}")
     logger.info("=" * 50)
 
     try:
@@ -223,56 +221,107 @@ def _build_first_aid_prompt(user_input: str) -> str:
     )
 
 
+class SarvamTranslateRequest(BaseModel):
+    text: str = Field(..., min_length=1)
+    source_lang: str = "hi-IN"
+    target_lang: str = "en-IN"
+
+class SarvamTTSRequest(BaseModel):
+    text: str = Field(..., min_length=1)
+    language_code: str = "hi-IN"
+    speaker: str = "shubh"
+
 @app.post("/api/first-aid/chat", response_model=FirstAidChatResponse)
 async def first_aid_chat(payload: FirstAidChatRequest):
-    """First-aid chatbot powered exclusively by Groq (meta-llama/llama-4-scout-17b-16e-instruct)."""
-    if not GROQ_AVAILABLE:
+    """First-aid chatbot powered by Google Gemini (gemini-1.5-flash)."""
+    if not GEMINI_AVAILABLE:
         return JSONResponse(
             status_code=503,
             content={
                 "success": False,
-                "provider": "groq",
+                "provider": "gemini",
                 "error": "sdk_unavailable",
-                "message": "Groq SDK is not installed. Run: pip install groq",
+                "message": "Gemini SDK is not installed. Run: pip install google-generativeai",
             },
         )
-    if not GROQ_API_KEY:
+    if not GEMINI_API_KEY:
         return JSONResponse(
             status_code=503,
             content={
                 "success": False,
-                "provider": "groq",
+                "provider": "gemini",
                 "error": "no_api_key",
-                "message": "GROQ_API_KEY is not configured.",
+                "message": "GEMINI_API_KEY is not configured.",
             },
         )
 
     try:
-        from groq_service import first_aid_chat as groq_first_aid
-        logger.info(f"🚑 Using Groq model: {CHAT_MODEL} for first-aid chat")
-        text = groq_first_aid(payload.query)
+        from gemini_service import first_aid_chat as gemini_first_aid
+        logger.info(f"🚑 Using Gemini model: {GEMINI_MODEL} for first-aid chat")
+        text = gemini_first_aid(payload.query)
         if not text:
             return JSONResponse(
                 status_code=500,
                 content={
                     "success": False,
-                    "provider": "groq",
+                    "provider": "gemini",
                     "error": "empty_response",
-                    "message": "Groq returned an empty response.",
+                    "message": "Gemini returned an empty response.",
                 },
             )
         return FirstAidChatResponse(response=text)
     except Exception as exc:
-        logger.error(f"❌ Groq first-aid chat error: {exc}", exc_info=True)
+        logger.error(f"❌ Gemini first-aid chat error: {exc}", exc_info=True)
         return JSONResponse(
             status_code=500,
             content={
                 "success": False,
-                "provider": "groq",
+                "provider": "gemini",
                 "error": "model_error",
                 "message": str(exc),
             },
         )
+
+@app.post("/api/sarvam/translate")
+async def sarvam_translate(payload: SarvamTranslateRequest):
+    """Translate text using Sarvam AI."""
+    if not SARVAM_API_KEY:
+        raise HTTPException(status_code=503, detail="Sarvam API key not configured")
+    try:
+        from sarvam_service import translate_text
+        result = translate_text(payload.text, payload.source_lang, payload.target_lang)
+        return {"success": True, "result": result}
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=str(e))
+
+@app.post("/api/sarvam/stt")
+async def sarvam_stt(
+    file: UploadFile = File(..., description="Audio file to transcribe (WAV/MP3)"),
+    language_code: str = Form("unknown"),
+    mode: str = Form("transcribe")
+):
+    """Transcribe audio using Sarvam AI."""
+    if not SARVAM_API_KEY:
+        raise HTTPException(status_code=503, detail="Sarvam API key not configured")
+    try:
+        from sarvam_service import speech_to_text
+        audio_bytes = await file.read()
+        result = speech_to_text(audio_bytes, filename=file.filename, language_code=language_code, mode=mode)
+        return {"success": True, "result": result}
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=str(e))
+
+@app.post("/api/sarvam/tts")
+async def sarvam_tts(payload: SarvamTTSRequest):
+    """Generate TTS audio using Sarvam AI."""
+    if not SARVAM_API_KEY:
+        raise HTTPException(status_code=503, detail="Sarvam API key not configured")
+    try:
+        from sarvam_service import text_to_speech
+        result = text_to_speech(payload.text, payload.language_code, payload.speaker)
+        return {"success": True, "result": result}
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=str(e))
 
 # Import and include Risk Prediction API Router
 try:
@@ -282,13 +331,13 @@ try:
 except Exception as e:
     logger.warning(f"⚠️  Risk Prediction API not loaded: {e}")
 
-# Import and include Accident Image Analysis Router + Groq Health Router
+# Import and include Accident Image Analysis Router + Gemini Health Router
 try:
-    from image_analysis_api import image_analysis_router, groq_health_router
+    from image_analysis_api import image_analysis_router, gemini_health_router
     app.include_router(image_analysis_router)
-    app.include_router(groq_health_router)
+    app.include_router(gemini_health_router)
     logger.info("✅ Accident Image Analysis API loaded successfully")
-    logger.info("✅ Groq Health endpoint loaded: GET /api/groq/health")
+    logger.info("✅ Gemini Health endpoint loaded: GET /api/gemini/health")
 except Exception as e:
     logger.warning(f"⚠️  Accident Image Analysis API not loaded: {e}")
 
@@ -299,14 +348,6 @@ try:
     logger.info("✅ Ambulance Routing API loaded successfully")
 except Exception as e:
     logger.warning(f"⚠️  Ambulance Routing API not loaded: {e}")
-
-# Import and include Voice AI Router (STT + TTS via Groq)
-try:
-    from voice_api import voice_router
-    app.include_router(voice_router)
-    logger.info("✅ Voice AI API loaded: POST /api/voice/stt | POST /api/voice/tts")
-except Exception as e:
-    logger.warning(f"⚠️  Voice AI API not loaded: {e}")
 
 # Request Logging Middleware
 @app.middleware("http")
@@ -1680,10 +1721,9 @@ async def root():
         "version": "2.0.0",
         "database": db_status,
         "aws_enabled": AWS_ENABLED,
-        "ai_provider": "groq",
-        "vision_model": VISION_MODEL,
-        "chat_model": CHAT_MODEL,
-        "groq_api_key_present": bool(GROQ_API_KEY),
+        "ai_provider": "gemini",
+        "gemini_model": GEMINI_MODEL,
+        "gemini_api_key_present": bool(GEMINI_API_KEY),
     }
 
 @app.get("/health")

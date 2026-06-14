@@ -1,7 +1,7 @@
 """
 SmartAid Intelligent Ambulance Route Optimizer
 
-Uses Google Directions API (multiple alternatives) + Groq LLM to select
+Uses Google Directions API (multiple alternatives) + Gemini LLM to select
 the optimal emergency route.
 
 Workflow:
@@ -33,8 +33,8 @@ GOOGLE_MAPS_API_KEY = os.environ.get(
     "AIzaSyB4P99kVH_B4Y1sdLmIEvVjrpO-cZFrFKY",  # Same key as Flutter app
 )
 
-# Groq API for intelligent route reasoning (optional enhancement)
-GROQ_API_KEY = os.environ.get("GROQ_API_KEY", "")
+# Gemini API for intelligent route reasoning (optional enhancement)
+GEMINI_API_KEY = os.environ.get("GEMINI_API_KEY", "") or os.environ.get("GOOGLE_API_KEY", "")
 
 
 def haversine_distance(lat1: float, lon1: float, lat2: float, lon2: float) -> float:

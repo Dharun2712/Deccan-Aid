@@ -1,22 +1,23 @@
 """
 SmartAid Accident Image Analysis Module
-Uses Groq Vision API to analyze accident scene images.
+Uses Google Gemini API to analyze accident scene images.
 
 Workflow:
   1. User uploads accident image
-  2. Image is base64-encoded and sent to Groq Vision Model
+  2. Image is loaded and sent to Gemini Vision Model
   3. AI extracts accident features (people, vehicles, injuries, fire, damage)
   4. Severity level predicted
   5. Ambulance alert priority returned
 """
 
 import os
-import base64
+import io
 import json
 import re
 import pathlib
 import logging
 from typing import Optional
+from PIL import Image
 
 # Safety net: ensure .env is loaded
 from dotenv import load_dotenv
@@ -25,8 +26,8 @@ load_dotenv(_env_path, override=False)
 
 logger = logging.getLogger(__name__)
 
-# Vision model available on Groq
-VISION_MODEL = os.getenv("VISION_MODEL", "meta-llama/llama-4-scout-17b-16e-instruct")
+# Model config
+GEMINI_MODEL = os.getenv("GEMINI_MODEL", "gemini-1.5-flash")
 
 # System prompt sent to the vision model
 ANALYSIS_PROMPT = """You are an AI emergency accident analysis system used in a SmartAid platform.
@@ -71,21 +72,19 @@ Return ONLY a valid JSON response with this structure:
 Do not include explanations. Only return JSON."""
 
 
-def _get_groq_client():
-    """Lazily import and build the Groq client, prioritizing the dedicated vision key."""
+def _get_gemini_client():
+    """Lazily import and configure Gemini client."""
+    api_key = os.environ.get("GEMINI_API_KEY", "").strip() or os.environ.get("GOOGLE_API_KEY", "").strip()
+    if not api_key:
+        raise RuntimeError("GEMINI_API_KEY is not set")
     try:
-        from groq import Groq
-        # Try vision key first, fallback to default chat key
-        api_key = os.environ.get("GROQ_API_KEY_VISION", "").strip()
-        if not api_key:
-            api_key = os.environ.get("GROQ_API_KEY", "").strip()
-        if not api_key:
-            raise RuntimeError("GROQ_API_KEY is not set")
-        return Groq(api_key=api_key)
+        import google.generativeai as genai
+        genai.configure(api_key=api_key)
+        return genai
     except ImportError:
         raise RuntimeError(
-            "The 'groq' package is not installed. "
-            "Install it with: pip install groq"
+            "The 'google-generativeai' package is not installed. "
+            "Install it with: pip install google-generativeai"
         )
 
 
@@ -138,7 +137,6 @@ def _compress_image(image_bytes: bytes, max_size: int = 800, quality: int = 70) 
     """Resize the image to fit within max_size and save it as a compressed JPEG."""
     try:
         from PIL import Image
-        import io
         img = Image.open(io.BytesIO(image_bytes))
         if img.mode != "RGB":
             img = img.convert("RGB")
@@ -165,7 +163,7 @@ def _compress_image(image_bytes: bytes, max_size: int = 800, quality: int = 70) 
 
 def analyze_accident_image(image_bytes: bytes, mime_type: str = "image/jpeg") -> dict:
     """
-    Analyze an accident scene image using the Groq Vision API.
+    Analyze an accident scene image using the Gemini API.
 
     Parameters
     ----------
@@ -181,39 +179,24 @@ def analyze_accident_image(image_bytes: bytes, mime_type: str = "image/jpeg") ->
         possible_injured, fire_detected, damage_level,
         severity_level, ambulance_priority.
     """
-    logger.info("🔍 Starting accident image analysis via Groq Vision API ...")
+    logger.info("🔍 Starting accident image analysis via Gemini ...")
 
-    client = _get_groq_client()
+    genai = _get_gemini_client()
 
     # Compress image to optimize latency
     compressed_bytes = _compress_image(image_bytes)
-    current_mime = "image/jpeg"
+    
+    # Load image for SDK
+    image = Image.open(io.BytesIO(compressed_bytes))
 
-    # Base64 encode the image
-    b64_data = base64.b64encode(compressed_bytes).decode("utf-8")
-    data_uri = f"data:{current_mime};base64,{b64_data}"
-
-    # Call Groq Vision API
-    response = client.chat.completions.create(
-        model=VISION_MODEL,
-        messages=[
-            {
-                "role": "user",
-                "content": [
-                    {"type": "text", "text": ANALYSIS_PROMPT},
-                    {
-                        "type": "image_url",
-                        "image_url": {"url": data_uri},
-                    },
-                ],
-            }
-        ],
-        temperature=0.1,   # Low temperature for consistent structured output
-        max_tokens=512,
-        response_format={"type": "json_object"}
+    # Call Gemini API
+    model = genai.GenerativeModel(
+        model_name=GEMINI_MODEL,
+        generation_config={"response_mime_type": "application/json"}
     )
+    response = model.generate_content([ANALYSIS_PROMPT, image])
 
-    raw_text = response.choices[0].message.content
+    raw_text = response.text.strip()
     logger.info(f"📝 Raw model response: {raw_text[:300]}")
 
     parsed = _extract_json(raw_text)

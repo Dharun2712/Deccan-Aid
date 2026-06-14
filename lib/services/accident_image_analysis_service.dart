@@ -85,7 +85,7 @@ class AccidentAnalysisResult {
 }
 
 /// Service that routes accident image analysis through the SmartAid backend,
-/// which has a working Groq API key and vision model.
+/// which has a working Gemini API key and vision model.
 class AccidentImageAnalysisService {
   static final AccidentImageAnalysisService _instance =
       AccidentImageAnalysisService._internal();

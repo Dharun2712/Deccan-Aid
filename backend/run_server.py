@@ -1,7 +1,7 @@
 #!/usr/bin/env python
 """
 MediConnect Backend Startup Script
-Loads .env file and starts Uvicorn server with Groq AI services enabled
+Loads .env file and starts Uvicorn server with Gemini & Sarvam AI services enabled
 """
 
 import os
@@ -15,15 +15,15 @@ if env_file.exists():
     from dotenv import load_dotenv
     load_dotenv(env_file)
     
-    # Verify Groq configuration
-    groq_key = os.environ.get("GROQ_API_KEY", "")
-    groq_model = os.environ.get("GROQ_MODEL", "mixtral-8x7b-32768")
+    # Verify Gemini configuration
+    gemini_key = os.environ.get("GEMINI_API_KEY", "") or os.environ.get("GOOGLE_API_KEY", "")
+    gemini_model = os.environ.get("GEMINI_MODEL", "gemini-1.5-flash")
     
-    if groq_key:
-        print(f"✅ GROQ_API_KEY loaded ({len(groq_key[:10])}...{groq_key[-5:]})")
-        print(f"✅ GROQ_MODEL: {groq_model}")
+    if gemini_key:
+        print(f"✅ GEMINI_API_KEY loaded ({len(gemini_key[:10])}...{gemini_key[-5:]})")
+        print(f"✅ GEMINI_MODEL: {gemini_model}")
     else:
-        print("⚠️  GROQ_API_KEY not found in .env")
+        print("⚠️  GEMINI_API_KEY not found in .env")
 else:
     print(f"⚠️  .env file not found at {env_file}")
 
