@@ -300,6 +300,14 @@ try:
 except Exception as e:
     logger.warning(f"⚠️  Ambulance Routing API not loaded: {e}")
 
+# Import and include Voice AI Router (STT + TTS via Groq)
+try:
+    from voice_api import voice_router
+    app.include_router(voice_router)
+    logger.info("✅ Voice AI API loaded: POST /api/voice/stt | POST /api/voice/tts")
+except Exception as e:
+    logger.warning(f"⚠️  Voice AI API not loaded: {e}")
+
 # Request Logging Middleware
 @app.middleware("http")
 async def log_requests(request: Request, call_next):

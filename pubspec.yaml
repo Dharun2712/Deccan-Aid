@@ -32,6 +32,8 @@ dependencies:
   url_launcher: ^6.2.5
   speech_to_text: ^7.0.0
   google_fonts: ^6.2.1
+  record: ^5.1.2              # Cross-platform mic recording (WAV/m4a)
+  path_provider: ^2.1.3       # Temp file paths for recorded audio
 
 dev_dependencies:
   flutter_test:
