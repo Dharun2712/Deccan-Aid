@@ -1,0 +1,57 @@
+# Flutter
+.dart_tool/
+.flutter-plugins
+.flutter-plugins-dependencies
+.packages
+*.iml
+*.lock
+pubspec.lock
+
+# Build directories
+build/
+.gradle
+*.apk
+*.aar
+*.aab
+
+# IDE
+.idea/
+.vscode/
+*.swp
+*.swo
+*~
+
+# OS
+.DS_Store
+Thumbs.db
+
+# Environment
+.env
+.env.local
+
+# Python
+__pycache__/
+*.py[cod]
+*$py.class
+*.so
+.Python
+env/
+venv/
+
+# Node/npm
+node_modules/
+npm-debug.log
+
+# Large files
+*.pkl
+*.pth
+*.h5
+*.pb
+models/accident_detection_model.pkl
+
+# Credentials and secrets
+*.json.json
+*-key.json
+.env
+.env.local
+backend/vision-key.json.json
