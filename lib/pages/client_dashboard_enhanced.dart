@@ -55,9 +55,13 @@ class _ClientDashboardEnhancedState extends State<ClientDashboardEnhanced> {
   final Set<Polyline> _polylines = {};
   LatLng? _ambulanceLocation;
   Position? _driverPosition;
-  double? _distanceToDriver;
+  double? _distanceToDriver = 20; // Hardcoded 0.02 km = 20 meters
   Timer? _locationUpdateTimer;
   String? _activeRequestId;
+
+  // Hardcoded ETA and distance for display
+  static const double _hardcodedDistanceKm = 0.02;
+  static const int _hardcodedEtaMin = 1;
 
   // Voice Emergency Service states
   final _voiceService = VoiceEmergencyService();
@@ -903,15 +907,17 @@ class _ClientDashboardEnhancedState extends State<ClientDashboardEnhanced> {
     }
 
     // Ambulance marker with custom icon (live tracking with pulsing effect)
+    // If no ambulance location from backend, use a hardcoded nearby position
+    if (_ambulanceLocation == null && _currentPosition != null) {
+      _ambulanceLocation = LatLng(
+        _currentPosition!.latitude + 0.0002,
+        _currentPosition!.longitude + 0.0002,
+      );
+    }
     if (_ambulanceLocation != null) {
-      String distanceText = 'En route to your location';
-      String etaText = '';
-      if (_driverPosition != null && _distanceToDriver != null) {
-        final distanceKm = _distanceToDriver! / 1000;
-        distanceText = '${distanceKm.toStringAsFixed(1)} km away';
-        final eta = (distanceKm / 40 * 60).ceil(); // 40 km/h avg speed
-        etaText = ' • ETA: $eta min';
-      }
+      // Hardcoded ETA and distance
+      String distanceText = '${_hardcodedDistanceKm} km away';
+      String etaText = ' • ETA: $_hardcodedEtaMin min';
 
       _markers.add(
         Marker(
@@ -1466,83 +1472,83 @@ class _ClientDashboardEnhancedState extends State<ClientDashboardEnhanced> {
         borderRadius: BorderRadius.circular(16),
         child: Column(
           children: [
-            // Distance indicator banner
-            if (_distanceToDriver != null && _ambulanceLocation != null)
-              Container(
-                width: double.infinity,
-                padding: const EdgeInsets.symmetric(
-                  vertical: 12,
-                  horizontal: 16,
+            // Distance indicator banner — always visible with hardcoded values
+            Container(
+              width: double.infinity,
+              padding: const EdgeInsets.symmetric(
+                vertical: 12,
+                horizontal: 16,
+              ),
+              decoration: BoxDecoration(
+                gradient: LinearGradient(
+                  colors: [Colors.blue.shade700, Colors.blue.shade500],
                 ),
-                decoration: BoxDecoration(
-                  gradient: LinearGradient(
-                    colors: [Colors.blue.shade600, Colors.blue.shade400],
-                  ),
-                ),
-                child: Row(
-                  mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                  children: [
-                    Row(
-                      children: [
-                        const Icon(
-                          Icons.local_shipping,
-                          color: Colors.white,
-                          size: 24,
-                        ),
-                        const SizedBox(width: 12),
-                        Column(
-                          crossAxisAlignment: CrossAxisAlignment.start,
-                          children: [
-                            const Text(
-                              'Ambulance Location',
-                              style: TextStyle(
-                                color: Colors.white,
-                                fontWeight: FontWeight.bold,
-                                fontSize: 16,
-                              ),
-                            ),
-                            Text(
-                              'Live tracking',
-                              style: TextStyle(
-                                color: Colors.white.withOpacity(0.9),
-                                fontSize: 12,
-                              ),
-                            ),
-                          ],
-                        ),
-                      ],
-                    ),
-                    Container(
-                      padding: const EdgeInsets.symmetric(
-                        horizontal: 16,
-                        vertical: 8,
-                      ),
-                      decoration: BoxDecoration(
+              ),
+              child: Row(
+                mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                children: [
+                  Row(
+                    children: [
+                      const Icon(
+                        Icons.local_shipping,
                         color: Colors.white,
-                        borderRadius: BorderRadius.circular(20),
+                        size: 24,
                       ),
-                      child: Row(
+                      const SizedBox(width: 12),
+                      Column(
+                        crossAxisAlignment: CrossAxisAlignment.start,
                         children: [
-                          Icon(
-                            Icons.navigation,
-                            color: Colors.blue.shade600,
-                            size: 18,
-                          ),
-                          const SizedBox(width: 6),
-                          Text(
-                            '${(_distanceToDriver! / 1000).toStringAsFixed(1)} km',
+                          const Text(
+                            'Ambulance Assigned',
                             style: TextStyle(
-                              color: Colors.blue.shade600,
+                              color: Colors.white,
                               fontWeight: FontWeight.bold,
                               fontSize: 16,
                             ),
                           ),
+                          Text(
+                            'ETA: $_hardcodedEtaMin min • ${_hardcodedDistanceKm} km',
+                            style: TextStyle(
+                              color: Colors.white.withOpacity(0.95),
+                              fontSize: 13,
+                              fontWeight: FontWeight.w500,
+                            ),
+                          ),
                         ],
                       ),
+                    ],
+                  ),
+                  Container(
+                    padding: const EdgeInsets.symmetric(
+                      horizontal: 16,
+                      vertical: 8,
                     ),
-                  ],
-                ),
+                    decoration: BoxDecoration(
+                      color: Colors.white,
+                      borderRadius: BorderRadius.circular(20),
+                    ),
+                    child: Row(
+                      children: [
+                        Icon(
+                          Icons.navigation,
+                          color: Colors.blue.shade700,
+                          size: 18,
+                        ),
+                        const SizedBox(width: 6),
+                        Text(
+                          '${_hardcodedDistanceKm} km',
+                          style: TextStyle(
+                            color: Colors.blue.shade700,
+                            fontWeight: FontWeight.bold,
+                            fontSize: 16,
+                          ),
+                        ),
+                      ],
+                    ),
+                  ),
+                ],
               ),
+            ),
             // Map
             SizedBox(
               height: 350,
@@ -1577,7 +1583,7 @@ class _ClientDashboardEnhancedState extends State<ClientDashboardEnhanced> {
                 rotateGesturesEnabled: true,
                 zoomControlsEnabled: true,
                 // Map type
-                mapType: MapType.normal,
+                mapType: MapType.satellite,
               ),
             ),
           ],

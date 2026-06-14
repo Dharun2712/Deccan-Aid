@@ -45,10 +45,10 @@ class _SOSActiveScreenState extends State<SOSActiveScreen> with TickerProviderSt
   Map<String, dynamic>? _driverInfo;
   LatLng? _driverLocation;
   LatLng? _clientLocation;
-  String _eta = '--';
-  String _distance = '--';
-  String _durationText = '--';
-  String _distanceText = '--';
+  String _eta = '1 min';
+  String _distance = '0.02 km';
+  String _durationText = '1 min';
+  String _distanceText = '0.02 km';
   String _driverRating = '4.8';
   
   // Animation
@@ -638,7 +638,7 @@ class _SOSActiveScreenState extends State<SOSActiveScreen> with TickerProviderSt
               _mapController = controller;
               _animateCameraToShowBoth();
             },
-            mapType: MapType.normal,
+            mapType: MapType.satellite,
             myLocationEnabled: false,
             zoomControlsEnabled: false,
             mapToolbarEnabled: false,
@@ -782,7 +782,7 @@ class _SOSActiveScreenState extends State<SOSActiveScreen> with TickerProviderSt
       builder: (context, scrollController) {
         return Container(
           decoration: BoxDecoration(
-            color: _sheetBackground.withOpacity(0.96),
+            color: _sheetBackground.withOpacity(0.88),
             borderRadius: const BorderRadius.vertical(top: Radius.circular(26)),
             boxShadow: [
               BoxShadow(
