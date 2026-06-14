@@ -1,0 +1,482 @@
+<!DOCTYPE html>
+<html lang="en" x-data="appShell()" x-init="init()" :class="{ 'dark': theme === 'dark' }">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>Smart Ambulance Admin</title>
+  <link rel="icon" type="image/svg+xml" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'><rect width='100' height='100' rx='20' fill='%236366f1'/><text x='50' y='65' font-size='50' text-anchor='middle' fill='white'>🚑</text></svg>">
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Poppins:wght@300;400;500;600;700;800&display=swap" rel="stylesheet">
+  <script src="https://cdn.tailwindcss.com"></script>
+  <script>
+    tailwind.config = {
+      darkMode: 'class',
+      theme: {
+        extend: {
+          fontFamily: {
+            sans: ['Poppins', 'sans-serif'],
+          },
+          colors: {
+            neon: {
+              400: '#00f0ff',
+              500: '#00d1ff',
+              600: '#00b3ff',
+            },
+            primary: {
+              400: '#818cf8',
+              500: '#6366f1',
+              600: '#4f46e5',
+            }
+          },
+          boxShadow: {
+            neon: '0 0 20px rgba(99, 102, 241, 0.6)',
+            'neon-cyan': '0 0 20px rgba(0, 209, 255, 0.6)',
+          }
+        }
+      }
+    }
+  </script>
+  <link href="https://unpkg.com/aos@2.3.1/dist/aos.css" rel="stylesheet">
+  <!-- Leaflet.js for Interactive Maps -->
+  <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css" integrity="sha256-p4NxAoJBhIIN+hmNHrzRCf9tD/miZyoHS5obTRR9BMY=" crossorigin=""/>
+  <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js" integrity="sha256-20nQCchB9co0qIjJZRGuk2/Z9VM+kNiyxNV1lvTlZBo=" crossorigin=""></script>
+  <script defer src="https://cdn.jsdelivr.net/npm/alpinejs@3.x.x/dist/cdn.min.js"></script>
+  <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.0/dist/chart.umd.min.js"></script>
+  <link rel="stylesheet" href="assets/css/styles.css" />
+</head>
+<body class="bg-slate-950 text-slate-100 min-h-screen overflow-x-hidden">
+  <!-- Animated background -->
+  <div class="fixed inset-0 -z-10">
+    <div class="absolute inset-0 bg-gradient-to-br from-slate-950 via-slate-900 to-slate-950"></div>
+    <div class="absolute top-0 left-1/4 w-96 h-96 bg-indigo-500/20 rounded-full blur-[128px] animate-pulse"></div>
+    <div class="absolute bottom-0 right-1/4 w-96 h-96 bg-purple-500/20 rounded-full blur-[128px] animate-pulse" style="animation-delay: 1s;"></div>
+  </div>
+
+  <!-- Sidebar Navigation -->
+  <aside class="fixed left-0 top-0 h-screen w-72 bg-slate-900/40 backdrop-blur-2xl border-r border-slate-800/50 z-50 flex flex-col">
+    <div class="p-6 border-b border-slate-800/50">
+      <div class="flex items-center gap-3">
+        <div class="relative">
+          <div class="h-12 w-12 rounded-2xl bg-gradient-to-br from-indigo-500 to-purple-600 shadow-[0_0_30px_rgba(99,102,241,0.6)] flex items-center justify-center">
+            <svg class="w-7 h-7 text-white" fill="currentColor" viewBox="0 0 24 24">
+              <path d="M8.5 14.5L4 19l1.5 1.5L9 17h12v-2H8.5zM19 3h-4.5l-2.7 2.7L6 3 4.5 4.5l5.8 5.8L3 17.5l1.4 1.4 7.3-7.2L14 14h3l2-2 2 2h1V5l-3 3V3z"/>
+            </svg>
+          </div>
+          <div class="absolute -bottom-1 -right-1 h-4 w-4 bg-emerald-400 rounded-full border-2 border-slate-900 animate-pulse"></div>
+        </div>
+        <div>
+          <div class="text-xs font-semibold tracking-wider text-indigo-400 uppercase">Admin Panel</div>
+          <div class="text-sm font-bold text-white">Smart Ambulance</div>
+        </div>
+      </div>
+    </div>
+    
+    <nav class="flex-1 p-4 space-y-2 overflow-y-auto">
+      <a href="?page=dashboard" class="nav-item group ">
+        <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 5a1 1 0 011-1h4a1 1 0 011 1v7a1 1 0 01-1 1H5a1 1 0 01-1-1V5zM14 5a1 1 0 011-1h4a1 1 0 011 1v7a1 1 0 01-1 1h-4a1 1 0 01-1-1V5zM4 16a1 1 0 011-1h4a1 1 0 011 1v3a1 1 0 01-1 1H5a1 1 0 01-1-1v-3zM14 16a1 1 0 011-1h4a1 1 0 011 1v3a1 1 0 01-1 1h-4a1 1 0 01-1-1v-3z"></path></svg>
+        <span>Dashboard</span>
+        <div class="nav-indicator"></div>
+      </a>
+      <a href="?page=dispatch" class="nav-item group ">
+        <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 20l-5.447-2.724A1 1 0 013 16.382V5.618a1 1 0 011.447-.894L9 7m0 13l6-3m-6 3V7m6 10l4.553 2.276A1 1 0 0021 18.382V7.618a1 1 0 00-.553-.894L15 4m0 13V4m0 0L9 7"></path></svg>
+        <span>Dispatch</span>
+        <div class="nav-indicator"></div>
+      </a>
+      <a href="?page=tracking" class="nav-item group ">
+        <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M17.657 16.657L13.414 20.9a1.998 1.998 0 01-2.827 0l-4.244-4.243a8 8 0 1111.314 0z"></path><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 11a3 3 0 11-6 0 3 3 0 016 0z"></path></svg>
+        <span>Live Tracking</span>
+        <div class="nav-indicator"></div>
+      </a>
+      <a href="?page=ambulances" class="nav-item group ">
+        <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M13 10V3L4 14h7v7l9-11h-7z"></path></svg>
+        <span>Ambulances</span>
+        <div class="nav-indicator"></div>
+      </a>
+      <a href="?page=hospitals" class="nav-item group ">
+        <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 21V5a2 2 0 00-2-2H7a2 2 0 00-2 2v16m14 0h2m-2 0h-5m-9 0H3m2 0h5M9 7h1m-1 4h1m4-4h1m-1 4h1m-5 10v-5a1 1 0 011-1h2a1 1 0 011 1v5m-4 0h4"></path></svg>
+        <span>Hospitals</span>
+        <div class="nav-indicator"></div>
+      </a>
+      <a href="?page=requests" class="nav-item group active">
+        <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-3L13.732 4c-.77-1.333-2.694-1.333-3.464 0L3.34 16c-.77 1.333.192 3 1.732 3z"></path></svg>
+        <span>SOS Requests</span>
+        <div class="nav-indicator"></div>
+      </a>
+      <a href="?page=users" class="nav-item group ">
+        <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 4.354a4 4 0 110 5.292M15 21H3v-1a6 6 0 0112 0v1zm0 0h6v-1a6 6 0 00-9-5.197M13 7a4 4 0 11-8 0 4 4 0 018 0z"></path></svg>
+        <span>Users</span>
+        <div class="nav-indicator"></div>
+      </a>
+      <a href="?page=analytics" class="nav-item group ">
+        <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 19v-6a2 2 0 00-2-2H5a2 2 0 00-2 2v6a2 2 0 002 2h2a2 2 0 002-2zm0 0V9a2 2 0 012-2h2a2 2 0 012 2v10m-6 0a2 2 0 002 2h2a2 2 0 002-2m0 0V5a2 2 0 012-2h2a2 2 0 012 2v14a2 2 0 01-2 2h-2a2 2 0 01-2-2z"></path></svg>
+        <span>Analytics</span>
+        <div class="nav-indicator"></div>
+      </a>
+      <a href="?page=reports" class="nav-item group ">
+        <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 17v-2m3 2v-4m3 4v-6m2 10H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z"></path></svg>
+        <span>Reports</span>
+        <div class="nav-indicator"></div>
+      </a>
+      <a href="?page=alerts" class="nav-item group ">
+        <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 17h5l-1.405-1.405A2.032 2.032 0 0118 14.158V11a6.002 6.002 0 00-4-5.659V5a2 2 0 10-4 0v.341C7.67 6.165 6 8.388 6 11v3.159c0 .538-.214 1.055-.595 1.436L4 17h5m6 0v1a3 3 0 11-6 0v-1m6 0H9"></path></svg>
+        <span>Alerts</span>
+                <div class="nav-indicator"></div>
+      </a>
+      
+      <div class="my-4 border-t border-slate-800/50"></div>
+      
+      <a href="?page=settings" class="nav-item group ">
+        <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M10.325 4.317c.426-1.756 2.924-1.756 3.35 0a1.724 1.724 0 002.573 1.066c1.543-.94 3.31.826 2.37 2.37a1.724 1.724 0 001.065 2.572c1.756.426 1.756 2.924 0 3.35a1.724 1.724 0 00-1.066 2.573c.94 1.543-.826 3.31-2.37 2.37a1.724 1.724 0 00-2.572 1.065c-.426 1.756-2.924 1.756-3.35 0a1.724 1.724 0 00-2.573-1.066c-1.543.94-3.31-.826-2.37-2.37a1.724 1.724 0 00-1.065-2.572c-1.756-.426-1.756-2.924 0-3.35a1.724 1.724 0 001.066-2.573c-.94-1.543.826-3.31 2.37-2.37.996.608 2.296.07 2.572-1.065z"></path><circle cx="12" cy="12" r="3"></circle></svg>
+        <span>Settings</span>
+        <div class="nav-indicator"></div>
+      </a>
+    </nav>
+    
+    <div class="p-4 border-t border-slate-800/50">
+      <div class="flex items-center gap-3 p-3 rounded-xl bg-slate-800/30">
+        <div class="h-10 w-10 rounded-full bg-gradient-to-br from-indigo-500 to-purple-600 flex items-center justify-center text-white font-bold">
+          A
+        </div>
+        <div class="flex-1">
+          <div class="text-sm font-medium text-white">Admin</div>
+          <div class="text-xs text-slate-400">Super Admin</div>
+        </div>
+      </div>
+    </div>
+  </aside>
+
+  <!-- Main Content -->
+  <main class="ml-72 min-h-screen p-8">
+    <!-- Top Bar -->
+    <header class="flex items-center justify-between mb-8" data-aos="fade-down">
+      <div class="flex items-center gap-4">
+        <div class="relative">
+          <input type="text" placeholder="Search..." class="w-80 px-4 py-2.5 pl-10 rounded-xl bg-slate-800/50 border border-slate-700/50 text-slate-200 placeholder-slate-500 focus:outline-none focus:border-indigo-500/50 focus:ring-2 focus:ring-indigo-500/20 transition-all">
+          <svg class="w-5 h-5 absolute left-3 top-1/2 -translate-y-1/2 text-slate-500" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z"></path></svg>
+        </div>
+      </div>
+      <div class="flex items-center gap-4">
+        <div class="flex items-center gap-2 px-3 py-1.5 rounded-lg bg-emerald-500/10 border border-emerald-500/30">
+          <div class="w-2 h-2 rounded-full bg-emerald-400 animate-pulse"></div>
+          <span class="text-xs font-medium text-emerald-400">System Online</span>
+        </div>
+        <button onclick="location.reload()" class="p-2.5 rounded-xl bg-slate-800/50 border border-slate-700/50 text-slate-400 hover:text-white hover:border-indigo-500/50 transition-all">
+          <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 9m0 0H9m11 11v-5h-.581m0 0a8.003 8.003 0 01-15.357-2m15.357 2H15"></path></svg>
+        </button>
+        <button class="relative p-2.5 rounded-xl bg-slate-800/50 border border-slate-700/50 text-slate-400 hover:text-white hover:border-indigo-500/50 transition-all">
+          <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 17h5l-1.405-1.405A2.032 2.032 0 0118 14.158V11a6.002 6.002 0 00-4-5.659V5a2 2 0 10-4 0v.341C7.67 6.165 6 8.388 6 11v3.159c0 .538-.214 1.055-.595 1.436L4 17h5m6 0v1a3 3 0 11-6 0v-1m6 0H9"></path></svg>
+          <span class="absolute -top-1 -right-1 h-4 w-4 bg-red-500 rounded-full text-[10px] font-bold flex items-center justify-center">3</span>
+        </button>
+      </div>
+    </header>
+
+<style>
+@keyframes reqSlideIn {
+  from { opacity: 0; transform: translateY(-20px); }
+  to   { opacity: 1; transform: translateY(0); }
+}
+@keyframes reqBadgePulse {
+  0%   { box-shadow: 0 0 0 0 rgba(251,146,60,0.5); }
+  70%  { box-shadow: 0 0 0 6px rgba(251,146,60,0); }
+  100% { box-shadow: 0 0 0 0 rgba(251,146,60,0); }
+}
+</style>
+
+<div class="space-y-6">
+  <!-- Page Header -->
+  <div class="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
+    <div>
+      <h1 class="text-2xl font-bold text-white">SOS Requests</h1>
+      <p class="text-slate-400 text-sm mt-1">
+        Monitor and manage emergency requests - Live
+        <span id="reqSourceBadge" class="ml-2 px-2 py-0.5 text-xs rounded-full bg-slate-700 text-slate-400">loading...</span>
+        <span id="reqLastFetched" class="ml-2 text-xs text-slate-500"></span>
+      </p>
+    </div>
+    <div class="flex items-center gap-3">
+      <button onclick="loadRequests('all')" class="btn-primary">
+        <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+          <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 9m0 0H9m11 11v-5h-.581m0 0a8.003 8.003 0 01-15.357-2m15.357 2H15" />
+        </svg>
+        Refresh
+      </button>
+    </div>
+  </div>
+
+  <!-- Stats Row -->
+  <div class="grid grid-cols-1 sm:grid-cols-4 gap-4">
+    <div class="metric-card">
+      <div class="flex items-center gap-4">
+        <div class="p-3 bg-indigo-500/20 rounded-xl">
+          <svg class="w-6 h-6 text-indigo-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 5H7a2 2 0 00-2 2v12a2 2 0 002 2h10a2 2 0 002-2V7a2 2 0 00-2-2h-2M9 5a2 2 0 002 2h2a2 2 0 002-2M9 5a2 2 0 012-2h2a2 2 0 012 2" />
+          </svg>
+        </div>
+        <div>
+          <p class="text-slate-400 text-sm">Total</p>
+          <p class="text-2xl font-bold text-white" id="reqCountTotal">0</p>
+        </div>
+      </div>
+    </div>
+    <div class="metric-card">
+      <div class="flex items-center gap-4">
+        <div class="p-3 bg-amber-500/20 rounded-xl">
+          <svg class="w-6 h-6 text-amber-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 8v4l3 3m6-3a9 9 0 11-18 0 9 9 0 0118 0z" />
+          </svg>
+        </div>
+        <div>
+          <p class="text-slate-400 text-sm">High</p>
+          <p class="text-2xl font-bold text-amber-400" id="reqCountHigh">0</p>
+        </div>
+      </div>
+    </div>
+    <div class="metric-card">
+      <div class="flex items-center gap-4">
+        <div class="p-3 bg-red-500/20 rounded-xl">
+          <svg class="w-6 h-6 text-red-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-3L13.732 4c-.77-1.333-2.694-1.333-3.464 0L3.34 16c-.77 1.333.192 3 1.732 3z" />
+          </svg>
+        </div>
+        <div>
+          <p class="text-slate-400 text-sm">Critical</p>
+          <p class="text-2xl font-bold text-red-400" id="reqCountCritical">0</p>
+        </div>
+      </div>
+    </div>
+    <div class="metric-card">
+      <div class="flex items-center gap-4">
+        <div class="p-3 bg-emerald-500/20 rounded-xl">
+          <svg class="w-6 h-6 text-emerald-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z" />
+          </svg>
+        </div>
+        <div>
+          <p class="text-slate-400 text-sm">Medium</p>
+          <p class="text-2xl font-bold text-emerald-400" id="reqCountMedium">0</p>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- Filter Tabs -->
+  <div class="flex items-center gap-2 border-b border-slate-700/50 pb-3">
+    <button onclick="loadRequests('all')"      class="req-filter-btn active px-4 py-2 text-sm font-medium bg-indigo-500/20 text-indigo-400 rounded-lg" data-filter="all">All Requests</button>
+    <button onclick="loadRequests('critical')" class="req-filter-btn px-4 py-2 text-sm font-medium text-slate-400 hover:bg-slate-700/50 rounded-lg" data-filter="critical">Critical</button>
+    <button onclick="loadRequests('high')"     class="req-filter-btn px-4 py-2 text-sm font-medium text-slate-400 hover:bg-slate-700/50 rounded-lg" data-filter="high">High</button>
+    <button onclick="loadRequests('medium')"   class="req-filter-btn px-4 py-2 text-sm font-medium text-slate-400 hover:bg-slate-700/50 rounded-lg" data-filter="medium">Medium</button>
+    <button onclick="loadRequests('low')"      class="req-filter-btn px-4 py-2 text-sm font-medium text-slate-400 hover:bg-slate-700/50 rounded-lg" data-filter="low">Low</button>
+  </div>
+
+  <!-- Requests Table (AJAX) -->
+  <div class="control-card overflow-hidden">
+    <div id="reqTableContainer">
+      <div class="flex items-center justify-center py-12">
+        <svg class="animate-spin w-8 h-8 text-indigo-400" fill="none" viewBox="0 0 24 24">
+          <circle class="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" stroke-width="4"></circle>
+          <path class="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8v8z"></path>
+        </svg>
+        <span class="ml-3 text-slate-400">Loading requests from AWS-DynamoDB...</span>
+      </div>
+    </div>
+  </div>
+</div>
+
+<script>
+// ============================================================
+// SOS Requests AJAX — same data source as Alerts tab
+// Incremental: only prepends NEW entries on poll
+// ============================================================
+const reqSevColors = { critical:'red', high:'amber', medium:'cyan', low:'emerald' };
+let reqKnownIds = new Set();
+let reqCurrentFilter = 'all';
+let reqInitialDone = false;
+
+function reqToIST(dateStr) {
+  if (!dateStr) return '';
+  const d = new Date(dateStr);
+  if (isNaN(d)) return '';
+  return d.toLocaleString('en-IN', { timeZone: 'Asia/Kolkata', day: '2-digit', month: 'short', hour: '2-digit', minute: '2-digit', hour12: true });
+}
+function reqTimeAgo(dateStr) {
+  if (!dateStr) return 'Just now';
+  const diff = Math.floor((Date.now() - new Date(dateStr).getTime()) / 1000);
+  if (diff < 0) return reqToIST(dateStr);
+  if (diff < 60) return diff + 's ago';
+  if (diff < 3600) return Math.floor(diff/60) + 'm ago';
+  if (diff < 86400) return Math.floor(diff/3600) + 'h ago';
+  return Math.floor(diff/86400) + 'd ago';
+}
+function reqEsc(s) { return s ? String(s).replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;') : ''; }
+
+function renderReqRow(a) {
+  const sev = (a.severity||'medium').toLowerCase();
+  const color = reqSevColors[sev]||'cyan';
+  const statusSlug = (a.status||'pending').toLowerCase().replace(/ /g,'-');
+  const id = a._id || a.id || '';
+  const shortId = id.slice(-8);
+  const initial = (a.user_name||'U').charAt(0).toUpperCase();
+  const loc = a.location?.name || a.pickup_location || 'Chennai';
+
+  return `<tr class="req-row hover:bg-slate-800/50 transition" data-req-id="${reqEsc(id)}">
+    <td><span class="font-mono text-xs text-indigo-400">#${reqEsc(shortId)}</span></td>
+    <td>
+      <div class="flex items-center gap-2">
+        <div class="w-8 h-8 rounded-full bg-gradient-to-br from-${color}-500 to-${color}-600 flex items-center justify-center text-white text-xs font-bold">${initial}</div>
+        <span class="text-white">${reqEsc(a.user_name||'Unknown')}</span>
+      </div>
+    </td>
+    <td class="text-slate-400 text-sm">${reqEsc(a.user_phone||'N/A')}</td>
+    <td class="text-slate-400 text-sm max-w-[200px] truncate" title="${reqEsc(a.emergency_type||'')}">${reqEsc(a.emergency_type||'Emergency')}</td>
+    <td><span class="status-badge ${sev}"><span class="status-indicator ${sev} inline-block"></span> ${sev.charAt(0).toUpperCase()+sev.slice(1)}</span></td>
+    <td><span class="status-badge ${statusSlug}">${reqEsc(a.status||'Pending')}</span></td>
+    <td class="text-slate-400 text-sm">${reqEsc(loc)}</td>
+    <td>
+      <div class="text-right">
+        <p class="text-${color}-400 text-sm font-medium req-timeago" data-ts="${reqEsc(a.created_at||'')}">${reqTimeAgo(a.created_at)}</p>
+        <p class="text-slate-500 text-xs">${reqToIST(a.created_at)}</p>
+      </div>
+    </td>
+    <td>
+      <div class="flex items-center gap-1">
+        <button class="p-2 text-slate-400 hover:text-white hover:bg-slate-700/50 rounded-lg transition" title="View Details">
+          <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 12a3 3 0 11-6 0 3 3 0 016 0z"/><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M2.458 12C3.732 7.943 7.523 5 12 5c4.478 0 8.268 2.943 9.542 7-1.274 4.057-5.064 7-9.542 7-4.477 0-8.268-2.943-9.542-7z"/></svg>
+        </button>
+        <button class="p-2 text-slate-400 hover:text-white hover:bg-slate-700/50 rounded-lg transition" title="Track Location">
+          <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M17.657 16.657L13.414 20.9a1.998 1.998 0 01-2.827 0l-4.244-4.243a8 8 0 1111.314 0z"/></svg>
+        </button>
+      </div>
+    </td>
+  </tr>`;
+}
+
+function reqRefreshTimeAgos() {
+  document.querySelectorAll('.req-timeago').forEach(el => {
+    const ts = el.dataset.ts;
+    if (ts) el.textContent = reqTimeAgo(ts);
+  });
+}
+
+function loadRequests(severity) {
+  if (severity !== undefined) {
+    reqCurrentFilter = severity;
+    reqKnownIds.clear();
+    reqInitialDone = false;
+  }
+
+  document.querySelectorAll('.req-filter-btn').forEach(btn => {
+    const isActive = btn.dataset.filter === reqCurrentFilter;
+    btn.className = isActive
+      ? 'req-filter-btn active px-4 py-2 text-sm font-medium bg-indigo-500/20 text-indigo-400 rounded-lg'
+      : 'req-filter-btn px-4 py-2 text-sm font-medium text-slate-400 hover:bg-slate-700/50 rounded-lg';
+  });
+
+  const container = document.getElementById('reqTableContainer');
+
+  if (!reqInitialDone) {
+    container.innerHTML = `<div class="flex items-center justify-center py-12">
+      <svg class="animate-spin w-6 h-6 text-indigo-400" fill="none" viewBox="0 0 24 24"><circle class="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" stroke-width="4"></circle><path class="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8v8z"></path></svg>
+      <span class="ml-3 text-slate-400 text-sm">Fetching from AWS-DynamoDB...</span>
+    </div>`;
+  }
+
+  fetch(`api/alerts.php?severity=${encodeURIComponent(reqCurrentFilter)}`)
+    .then(r => r.json())
+    .then(data => {
+      if (!data.success) throw new Error('API error');
+
+      // Badge
+      const badge = document.getElementById('reqSourceBadge');
+      if (data.source === 'mongodb') {
+        badge.textContent = '⚡ AWS-DynamoDB';
+        badge.className = 'ml-2 px-2 py-0.5 text-xs rounded-full bg-orange-500/20 text-orange-400';
+      } else {
+        badge.textContent = '📦 Demo Data';
+        badge.className = 'ml-2 px-2 py-0.5 text-xs rounded-full bg-slate-600/40 text-slate-400';
+      }
+      badge.style.animation = 'none';
+      badge.offsetHeight;
+      badge.style.animation = 'reqBadgePulse 0.8s ease-out';
+
+      // Counts
+      document.getElementById('reqCountTotal').textContent    = data.counts.total;
+      document.getElementById('reqCountCritical').textContent = data.counts.critical;
+      document.getElementById('reqCountHigh').textContent     = data.counts.high;
+      document.getElementById('reqCountMedium').textContent   = data.counts.medium;
+      document.getElementById('reqLastFetched').textContent   = '• updated ' + reqTimeAgo(data.fetched_at);
+
+      if (!reqInitialDone) {
+        // First load — full table
+        if (data.alerts.length === 0) {
+          container.innerHTML = `<div class="empty-state py-12">
+            <svg fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="1.5" d="M9 5H7a2 2 0 00-2 2v12a2 2 0 002 2h10a2 2 0 002-2V7a2 2 0 00-2-2h-2M9 5a2 2 0 002 2h2a2 2 0 002-2M9 5a2 2 0 012-2h2a2 2 0 012 2"/></svg>
+            <h3>No SOS Requests</h3><p>No active emergency requests found</p>
+          </div>`;
+        } else {
+          container.innerHTML = `<div class="overflow-x-auto"><table class="data-table"><thead><tr>
+            <th>ID</th><th>User</th><th>Phone</th><th>Type</th><th>Severity</th><th>Status</th><th>Location</th><th>Time</th><th>Actions</th>
+          </tr></thead><tbody id="reqTbody">${data.alerts.map(renderReqRow).join('')}</tbody></table></div>`;
+        }
+        data.alerts.forEach(a => reqKnownIds.add(a._id || a.id));
+        reqInitialDone = true;
+      } else {
+        // Incremental — only prepend new rows
+        const newAlerts = data.alerts.filter(a => {
+          const aid = a._id || a.id;
+          return aid && !reqKnownIds.has(aid);
+        });
+        if (newAlerts.length > 0) {
+          let tbody = document.getElementById('reqTbody');
+          if (!tbody) {
+            container.innerHTML = `<div class="overflow-x-auto"><table class="data-table"><thead><tr>
+              <th>ID</th><th>User</th><th>Phone</th><th>Type</th><th>Severity</th><th>Status</th><th>Location</th><th>Time</th><th>Actions</th>
+            </tr></thead><tbody id="reqTbody"></tbody></table></div>`;
+            tbody = document.getElementById('reqTbody');
+          }
+          newAlerts.forEach(a => {
+            const temp = document.createElement('tbody');
+            temp.innerHTML = renderReqRow(a);
+            const row = temp.firstElementChild;
+            row.style.animation = 'reqSlideIn 0.5s ease-out';
+            row.style.borderLeft = '3px solid #facc15';
+            tbody.prepend(row);
+            reqKnownIds.add(a._id || a.id);
+            setTimeout(() => { row.style.borderLeft = ''; }, 3000);
+          });
+        }
+        reqRefreshTimeAgos();
+      }
+    })
+    .catch(() => {
+      if (!reqInitialDone) {
+        container.innerHTML = `<div class="empty-state py-12">
+          <svg fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="1.5" d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-3L13.732 4c-.77-1.333-2.694-1.333-3.464 0L3.34 16c-.77 1.333.192 3 1.732 3z"/></svg>
+          <h3>Failed to Load Requests</h3><p>Could not reach the API. <button onclick="loadRequests('all')" class="text-indigo-400 underline">Retry</button></p>
+        </div>`;
+      }
+    });
+}
+
+// Immediate load + 5s polling
+loadRequests('all');
+setInterval(() => loadRequests(), 5000);
+</script>
+  </main>
+  
+  <footer class="ml-72 border-t border-slate-800/50 bg-slate-900/20 backdrop-blur-xl">
+    <div class="px-8 py-6 flex items-center justify-between text-sm text-slate-400">
+      <div>© 2026 Smart Ambulance System - Admin Dashboard</div>
+      <div class="flex items-center gap-2">
+        <span class="h-2 w-2 rounded-full bg-emerald-400 animate-pulse"></span>
+        <span class="text-xs">Connected to Backend</span>
+      </div>
+    </div>
+  </footer>
+
+  <!-- AOS init -->
+  <script src="https://unpkg.com/aos@2.3.1/dist/aos.js"></script>
+  <script>AOS.init({ once: false, duration: 600, easing: 'ease-out' });</script>
+  <script src="assets/js/app.js"></script>
+</body>
+</html>

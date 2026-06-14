@@ -1,0 +1,28 @@
+name: smartaid
+description: AI-powered emergency ambulance response ecosystem.
+publish_to: 'none'
+version: 1.0.0+1
+
+environment:
+  sdk: '>=3.0.0 <4.0.0'
+
+dependencies:
+  flutter:
+    sdk: flutter
+  flutter_riverpod: ^2.4.9
+  go_router: ^12.1.1
+  dio: ^5.4.0
+  firebase_core: ^2.24.2
+  firebase_auth: ^4.15.3
+  google_fonts: ^6.1.0
+  envied: ^0.5.3
+
+dev_dependencies:
+  flutter_test:
+    sdk: flutter
+  flutter_lints: ^3.0.1
+  build_runner: ^2.4.7
+  envied_generator: ^0.5.3
+
+flutter:
+  uses-material-design: true

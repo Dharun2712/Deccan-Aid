@@ -28,6 +28,8 @@ Thumbs.db
 # Environment
 .env
 .env.local
+.env.*.local
+!.env.example
 
 # Python
 __pycache__/
@@ -41,6 +43,7 @@ venv/
 # Node/npm
 node_modules/
 npm-debug.log
+*.log
 
 # Large files
 *.pkl
@@ -52,6 +55,6 @@ models/accident_detection_model.pkl
 # Credentials and secrets
 *.json.json
 *-key.json
-.env
-.env.local
 backend/vision-key.json.json
+vendor/
+/vendor/
